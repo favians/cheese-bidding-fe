@@ -4,7 +4,10 @@
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const path = getRouterParam(event, 'path') ?? ''
-  const token = getCookie(event, config.authCookieName)
+  // Admin (internal) endpoints carry the admin token; everything else the player token.
+  const isInternal = path === 'internal' || path.startsWith('internal/')
+  const cookieName = isInternal ? config.adminAuthCookieName : config.authCookieName
+  const token = getCookie(event, cookieName)
   const search = getRequestURL(event).search
   const target = `${config.backendBaseUrl}/api/v1/${path}${search}`
 

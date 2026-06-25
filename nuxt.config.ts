@@ -27,6 +27,8 @@ export default defineNuxtConfig({
     backendBaseUrl: 'http://localhost:8081',
     // name of the httpOnly cookie that holds the player JWT.
     authCookieName: 'cb_token',
+    // name of the httpOnly cookie that holds the admin (internal) JWT.
+    adminAuthCookieName: 'cb_admin_token',
     public: {
       // client talks only to same-origin Nitro routes under this prefix.
       apiBase: '/api'

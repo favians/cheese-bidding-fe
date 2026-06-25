@@ -1,4 +1,23 @@
-import type { ApiEnvelope } from '#shared/types/api'
+import type { ApiEnvelope, Pagination } from '#shared/types/api'
+
+function toApiError(error: unknown): ApiClientError {
+  if (error instanceof ApiClientError) {
+    return error
+  }
+  const fetchError = error as {
+    statusCode?: number
+    status?: number
+    statusMessage?: string
+    data?: { error?: { msg?: string }, message?: string }
+  }
+  return new ApiClientError(
+    fetchError.data?.error?.msg
+    ?? fetchError.data?.message
+    ?? fetchError.statusMessage
+    ?? 'Request failed',
+    fetchError.statusCode ?? fetchError.status ?? 500
+  )
+}
 
 export class ApiClientError extends Error {
   status: number
@@ -21,24 +40,22 @@ export function useApi() {
       }
       return envelope.data
     } catch (error: unknown) {
-      if (error instanceof ApiClientError) {
-        throw error
-      }
-      const fetchError = error as {
-        statusCode?: number
-        status?: number
-        statusMessage?: string
-        data?: { error?: { msg?: string }, message?: string }
-      }
-      throw new ApiClientError(
-        fetchError.data?.error?.msg
-        ?? fetchError.data?.message
-        ?? fetchError.statusMessage
-        ?? 'Request failed',
-        fetchError.statusCode ?? fetchError.status ?? 500
-      )
+      throw toApiError(error)
     }
   }
 
-  return { request }
+  // requestPaged returns the unwrapped data plus the pagination meta (list endpoints).
+  async function requestPaged<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<{ data: T, pagination: Pagination | null }> {
+    try {
+      const envelope = await $fetch<ApiEnvelope<T>>(path, options)
+      if (envelope.error?.status) {
+        throw new ApiClientError(envelope.error.msg, 500, envelope.error.code)
+      }
+      return { data: envelope.data, pagination: envelope.pagination ?? null }
+    } catch (error: unknown) {
+      throw toApiError(error)
+    }
+  }
+
+  return { request, requestPaged }
 }
