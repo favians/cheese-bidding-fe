@@ -1,0 +1,149 @@
+.character-panel {
+  display: grid;
+  gap: 24px;
+}
+
+.character-form-card,
+.character-table-card {
+  border-color: var(--cb-line);
+  background: rgba(8, 5, 6, 0.5);
+}
+
+.character-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.character-form-wide,
+.character-form-actions,
+.character-form-alert {
+  grid-column: 1 / -1;
+}
+
+.character-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.character-table-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.character-table-heading h3 {
+  margin: 0;
+  color: var(--cb-text);
+  font-family: var(--cb-font-wow);
+  font-size: 1.15rem;
+}
+
+.character-table-heading span {
+  color: var(--cb-muted);
+  font-size: 0.78rem;
+}
+
+.character-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.character-class-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(248, 232, 194, 0.25);
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.character-name {
+  font-family: var(--cb-font-wow);
+  font-weight: 800;
+}
+
+.character-class--druid {
+  color: #ff7c0a;
+}
+
+.character-class--hunter {
+  color: #aad372;
+}
+
+.character-class--mage {
+  color: #3fc7eb;
+}
+
+.character-class--paladin {
+  color: #f58cba;
+}
+
+.character-class--priest {
+  color: #ffffff;
+}
+
+.character-class--rogue {
+  color: #fff468;
+}
+
+.character-class--shaman {
+  color: #0070dd;
+}
+
+.character-class--warlock {
+  color: #8788ee;
+}
+
+.character-class--warrior {
+  color: #c69b6d;
+}
+
+.character-spec {
+  display: grid;
+  gap: 2px;
+}
+
+.character-spec small {
+  color: var(--cb-muted);
+}
+
+.character-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.character-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 30px 16px;
+  color: var(--cb-muted);
+  text-align: center;
+}
+
+.character-empty strong {
+  color: var(--cb-text);
+}
+
+.character-delete-copy {
+  margin: 0;
+  color: var(--cb-muted);
+}
+
+@media (max-width: 700px) {
+  .character-form {
+    grid-template-columns: 1fr;
+  }
+
+  .character-form-wide,
+  .character-form-actions,
+  .character-form-alert {
+    grid-column: auto;
+  }
+}

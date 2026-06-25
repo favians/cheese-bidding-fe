@@ -1,0 +1,475 @@
+:root {
+  color-scheme: dark;
+  --cb-surface: rgba(16, 10, 12, 0.88);
+  --cb-surface-raised: rgba(35, 21, 18, 0.86);
+  --cb-line: rgba(170, 116, 60, 0.42);
+  --cb-line-hot: #e29b3f;
+  --cb-text: #f8e8c2;
+  --cb-muted: #c8ad83;
+  /* Align the custom gold to the Nuxt UI `cheese` palette (single source of
+     truth) so bespoke chrome and Nuxt UI components share the exact same gold.
+     cheese-400 #fbbf24 / cheese-500 #f59e0b — see assets/css/main.css. */
+  --cb-theme: var(--color-cheese-400);
+  --cb-theme-hot: var(--color-cheese-500);
+  --cb-theme-rgb: 251, 191, 36;
+  --cb-theme-hot-rgb: 245, 158, 11;
+  --cb-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  --cb-font-wow: "Friz Quadrata Std", "Friz Quadrata", Cinzel, Georgia, serif;
+}
+
+html,
+body,
+#__nuxt {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: var(--cb-text);
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(var(--cb-theme-rgb), 0.24), transparent 30rem),
+    radial-gradient(ellipse at 18% 78%, rgba(var(--cb-theme-hot-rgb), 0.16), transparent 24rem),
+    radial-gradient(ellipse at 82% 72%, rgba(var(--cb-theme-rgb), 0.12), transparent 26rem),
+    linear-gradient(180deg, #100907 0%, #24130a 34%, #4a2608 62%, #080403 100%);
+}
+
+body::after {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+  background:
+    radial-gradient(2px 2px at 12% 88%, rgba(var(--cb-theme-hot-rgb), 0.58), transparent 68%),
+    radial-gradient(1.5px 1.5px at 28% 74%, rgba(var(--cb-theme-rgb), 0.48), transparent 68%),
+    radial-gradient(2px 2px at 44% 92%, rgba(var(--cb-theme-hot-rgb), 0.5), transparent 68%),
+    radial-gradient(1.5px 1.5px at 62% 79%, rgba(var(--cb-theme-rgb), 0.48), transparent 68%),
+    radial-gradient(2px 2px at 78% 90%, rgba(var(--cb-theme-hot-rgb), 0.56), transparent 68%),
+    radial-gradient(ellipse at 50% 65%, rgba(var(--cb-theme-rgb), 0.2), transparent 34rem),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.82));
+  background-size: 280px 360px, 340px 420px, 310px 390px, 380px 460px, 330px 430px, 100% 100%, 100% 100%;
+}
+
+.public-shell,
+.profile-shell {
+  width: min(1180px, calc(100% - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 28px 0 56px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 104px;
+  padding: 20px 24px;
+  margin-bottom: 32px;
+  border: 1px solid var(--cb-line);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(18, 9, 7, 0.94), rgba(67, 34, 8, 0.82));
+  box-shadow: var(--cb-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: grid;
+  gap: 2px;
+}
+
+.brand-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  color: var(--cb-theme);
+  font-family: var(--cb-font-wow);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.brand h1 {
+  margin: 4px 0 0;
+  color: var(--cb-text);
+  font-family: var(--cb-font-wow);
+  font-size: clamp(1.7rem, 4vw, 2.7rem);
+  line-height: 1;
+  text-shadow: 0 0 24px rgba(var(--cb-theme-rgb), 0.28);
+}
+
+.brand p {
+  margin: 6px 0 0;
+  color: var(--cb-muted);
+}
+
+.topbar-link {
+  color: var(--cb-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.topbar-link:hover,
+.topbar-link:focus-visible {
+  color: var(--cb-theme);
+}
+
+.public-login-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+  align-items: center;
+  gap: clamp(36px, 8vw, 100px);
+  min-height: 540px;
+}
+
+.login-intro {
+  max-width: 620px;
+}
+
+.login-kicker,
+.login-card-heading span,
+.profile-copy span,
+.profile-info-card span,
+.profile-section-heading span,
+.identity-field span {
+  color: var(--cb-theme);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.login-intro h2 {
+  margin: 12px 0;
+  max-width: 11ch;
+  font-family: var(--cb-font-wow);
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  line-height: 1.08;
+  text-shadow: 0 0 44px rgba(var(--cb-theme-rgb), 0.28);
+}
+
+.login-intro p {
+  max-width: 480px;
+  color: var(--cb-muted);
+  font-size: 1.1rem;
+}
+
+.public-login-card,
+.profile-password-card {
+  border-color: transparent;
+  background: linear-gradient(160deg, rgba(18, 10, 8, 0.96), rgba(48, 27, 13, 0.92));
+  /* gold outline (replaces Nuxt UI's neutral ring) + soft gold glow */
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--cb-theme-rgb), 0.55),
+    0 0 30px rgba(var(--cb-theme-rgb), 0.12),
+    var(--cb-shadow) !important;
+  backdrop-filter: blur(18px);
+}
+
+.login-card-heading {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+/* Cheese logo watermark, centered behind the login page. */
+.public-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("/cheese-bidding-icon-192.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: min(480px, 58vw);
+  opacity: 0.12;
+}
+
+.login-card-heading h2,
+.profile-section-heading h2 {
+  margin: 4px 0 0;
+  color: var(--cb-text);
+  font-family: var(--cb-font-wow);
+  font-size: 1.8rem;
+}
+
+.login-form,
+.profile-password-form {
+  display: grid;
+  gap: 18px;
+}
+
+/* Golden uppercase field labels (matches the V1 reference). */
+.login-form label,
+.profile-password-form label {
+  color: var(--cb-theme);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Gold-outlined inputs: a gold inset ring (overrides Nuxt UI's neutral ring)
+   plus a brighter gold glow on focus. */
+.login-form input,
+.profile-password-form input {
+  background: rgba(10, 6, 7, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(var(--cb-theme-rgb), 0.45) !important;
+}
+
+.login-form input:focus,
+.login-form input:focus-visible,
+.profile-password-form input:focus,
+.profile-password-form input:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--cb-theme-rgb), 0.95),
+    0 0 0 3px rgba(var(--cb-theme-rgb), 0.18) !important;
+}
+
+.profile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.profile-hero-card,
+.profile-info-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 150px;
+  padding: 28px;
+  border: 1px solid var(--cb-line);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(17, 10, 8, 0.94), rgba(49, 28, 14, 0.86));
+  box-shadow: var(--cb-shadow);
+}
+
+.profile-mark,
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #241304;
+  font-family: var(--cb-font-wow);
+  font-weight: 900;
+  border: 1px solid rgba(255, 230, 133, 0.72);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cb-theme), var(--cb-theme-hot));
+  box-shadow: 0 0 34px rgba(var(--cb-theme-rgb), 0.25);
+}
+
+.profile-mark {
+  width: 88px;
+  height: 88px;
+  font-size: 2rem;
+}
+
+.profile-copy h2,
+.profile-sidebar h2 {
+  margin: 5px 0;
+  font-family: var(--cb-font-wow);
+}
+
+.profile-copy h2 {
+  font-size: 2rem;
+}
+
+.profile-copy p,
+.profile-sidebar p,
+.profile-info-card small {
+  margin: 0;
+  color: var(--cb-muted);
+}
+
+.profile-info-card {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.profile-info-card strong {
+  color: #86efac;
+  font-size: 1.7rem;
+}
+
+.profile-management {
+  padding: 20px;
+  border: 1px solid var(--cb-line);
+  border-radius: 18px;
+  background: rgba(8, 5, 6, 0.68);
+  box-shadow: var(--cb-shadow);
+  backdrop-filter: blur(14px);
+}
+
+.profile-management-grid {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.profile-sidebar,
+.profile-content-panel {
+  border: 1px solid var(--cb-line);
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(20, 12, 10, 0.92), rgba(40, 23, 13, 0.82));
+}
+
+.profile-sidebar {
+  padding: 24px 18px;
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 14px;
+  font-size: 1.5rem;
+}
+
+.profile-sidebar h2 {
+  font-size: 1.35rem;
+}
+
+.profile-menu {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 14px;
+  color: var(--cb-muted);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.profile-menu-item small {
+  color: rgba(200, 173, 131, 0.55);
+  font-size: 0.66rem;
+}
+
+.profile-menu-item.is-active {
+  color: var(--cb-theme);
+  border-color: var(--cb-line-hot);
+  background: rgba(var(--cb-theme-rgb), 0.08);
+  box-shadow: 0 0 18px rgba(var(--cb-theme-rgb), 0.12);
+}
+
+.profile-menu-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.profile-content-panel {
+  min-height: 430px;
+  padding: 28px;
+}
+
+.profile-section-heading {
+  margin-bottom: 24px;
+}
+
+.identity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.identity-field {
+  display: grid;
+  gap: 8px;
+  min-height: 120px;
+  padding: 20px;
+  border: 1px solid rgba(170, 116, 60, 0.28);
+  border-radius: 12px;
+  background: rgba(8, 5, 6, 0.5);
+}
+
+.identity-field strong {
+  overflow-wrap: anywhere;
+  color: var(--cb-text);
+  font-size: 1.05rem;
+}
+
+.profile-password-card {
+  max-width: 560px;
+}
+
+@media (max-width: 820px) {
+  .public-login-layout,
+  .profile-showcase,
+  .profile-management-grid,
+  .identity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-intro {
+    text-align: center;
+  }
+
+  .login-intro p {
+    margin-inline: auto;
+  }
+
+  .profile-sidebar {
+    text-align: left;
+  }
+
+  .profile-avatar {
+    margin-inline: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-shell,
+  .profile-shell {
+    width: min(100% - 20px, 1180px);
+    padding-top: 10px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    padding: 18px;
+    border-radius: 12px;
+  }
+
+  .profile-header-actions {
+    align-self: center;
+  }
+
+  .profile-hero-card,
+  .profile-info-card,
+  .profile-content-panel {
+    padding: 20px;
+  }
+
+  .profile-management {
+    padding: 10px;
+  }
+}

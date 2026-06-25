@@ -1,76 +1,103 @@
+<script setup lang="ts">
+const auth = useAuthStore()
+const username = ref('')
+const password = ref('')
+
+await auth.bootstrap()
+if (auth.isAuthenticated) {
+  await navigateTo('/profile')
+}
+
+async function submitLogin() {
+  if (!username.value.trim() || !password.value) {
+    auth.error = 'Username and password are required'
+    return
+  }
+  try {
+    await auth.login(username.value, password.value)
+    await navigateTo('/profile')
+  } catch {
+    // Store exposes safe error message.
+  }
+}
+</script>
+
 <template>
-  <div>
-    <UPageHero
-      title="Nuxt Starter Template"
-      description="A production-ready starter template powered by Nuxt UI. Build beautiful, accessible, and performant applications in minutes, not hours."
-      :links="[{
-        label: 'Get started',
-        to: 'https://ui.nuxt.com/docs/getting-started/installation/nuxt',
-        target: '_blank',
-        trailingIcon: 'i-lucide-arrow-right',
-        size: 'xl'
-      }, {
-        label: 'Use this template',
-        to: 'https://github.com/nuxt-ui-templates/starter',
-        target: '_blank',
-        icon: 'i-simple-icons-github',
-        size: 'xl',
-        color: 'neutral',
-        variant: 'subtle'
-      }]"
-    />
+  <main class="public-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-head">
+          <span class="brand-logo">🧀 Cheese GDKP</span>
+        </div>
+        <h1>Client Login</h1>
+        <p>Real-time raid loot bidding</p>
+      </div>
+    </header>
 
-    <UPageSection
-      id="features"
-      title="Everything you need to build modern Nuxt apps"
-      description="Start with a solid foundation. This template includes all the essentials for building production-ready applications with Nuxt UI's powerful component system."
-      :features="[{
-        icon: 'i-lucide-rocket',
-        title: 'Production-ready from day one',
-        description: 'Pre-configured with TypeScript, ESLint, Tailwind CSS, and all the best practices. Focus on building features, not setting up tooling.'
-      }, {
-        icon: 'i-lucide-palette',
-        title: 'Beautiful by default',
-        description: 'Leveraging Nuxt UI\'s design system with automatic dark mode, consistent spacing, and polished components that look great out of the box.'
-      }, {
-        icon: 'i-lucide-zap',
-        title: 'Lightning fast',
-        description: 'Optimized for performance with SSR/SSG support, automatic code splitting, and edge-ready deployment. Your users will love the speed.'
-      }, {
-        icon: 'i-lucide-blocks',
-        title: '100+ components included',
-        description: 'Access Nuxt UI\'s comprehensive component library. From forms to navigation, everything is accessible, responsive, and customizable.'
-      }, {
-        icon: 'i-lucide-code-2',
-        title: 'Developer experience first',
-        description: 'Auto-imports, hot module replacement, and TypeScript support. Write less boilerplate and ship more features.'
-      }, {
-        icon: 'i-lucide-shield-check',
-        title: 'Built for scale',
-        description: 'Enterprise-ready architecture with proper error handling, SEO optimization, and security best practices built-in.'
-      }]"
-    />
+    <section class="public-login-layout">
+      <article class="login-intro">
+        <span class="login-kicker">Real-time raid loot bidding</span>
+        <h2>Cheese GDKP</h2>
+        <p>Login with credentials from admin.</p>
+      </article>
 
-    <UPageSection>
-      <UPageCTA
-        title="Ready to build your next Nuxt app?"
-        description="Join thousands of developers building with Nuxt and Nuxt UI. Get this template and start shipping today."
-        variant="subtle"
-        :links="[{
-          label: 'Start building',
-          to: 'https://ui.nuxt.com/docs/getting-started/installation/nuxt',
-          target: '_blank',
-          trailingIcon: 'i-lucide-arrow-right',
-          color: 'neutral'
-        }, {
-          label: 'View on GitHub',
-          to: 'https://github.com/nuxt-ui-templates/starter',
-          target: '_blank',
-          icon: 'i-simple-icons-github',
-          color: 'neutral',
-          variant: 'outline'
-        }]"
-      />
-    </UPageSection>
-  </div>
+      <UCard class="public-login-card">
+        <form
+          class="login-form"
+          @submit.prevent="submitLogin"
+        >
+          <UFormField
+            label="Username"
+            required
+            size="xl"
+          >
+            <UInput
+              v-model="username"
+              class="w-full"
+              name="username"
+              autocomplete="username"
+              placeholder="Enter your username"
+              icon="i-lucide-user"
+              size="xl"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Password"
+            required
+            size="xl"
+          >
+            <UInput
+              v-model="password"
+              class="w-full"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Enter your password"
+              icon="i-lucide-lock-keyhole"
+              size="xl"
+            />
+          </UFormField>
+
+          <UAlert
+            v-if="auth.error"
+            color="error"
+            variant="soft"
+            icon="i-lucide-circle-alert"
+            :title="auth.error"
+          />
+
+          <UButton
+            type="submit"
+            label="Login"
+            icon="i-lucide-log-in"
+            size="xl"
+            block
+            class="login-submit justify-center"
+            :loading="auth.loading"
+          />
+        </form>
+      </UCard>
+    </section>
+  </main>
 </template>
