@@ -196,14 +196,23 @@ async function logout() {
               Code <span class="font-mono">{{ session.code }}</span> · {{ session.bid_currency }} · min {{ session.default_min_bid }} · {{ session.instance_slugs || 'no instances' }}
             </div>
           </div>
-          <UButton
-            v-if="session.status === 'active'"
-            color="error"
-            variant="soft"
-            icon="i-lucide-square"
-            label="End"
-            @click="endSession(session.id)"
-          />
+          <div class="flex gap-2">
+            <UButton
+              color="primary"
+              variant="soft"
+              icon="i-lucide-settings"
+              label="Manage"
+              :to="`/admin/sessions/${session.id}`"
+            />
+            <UButton
+              v-if="session.status === 'active'"
+              color="error"
+              variant="soft"
+              icon="i-lucide-square"
+              label="End"
+              @click="endSession(session.id)"
+            />
+          </div>
         </div>
       </UCard>
     </div>

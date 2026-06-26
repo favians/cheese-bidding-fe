@@ -146,3 +146,25 @@ export interface Prebid {
   created_at: string
   next_min_bid: number
 }
+
+export interface CreateAuctionRequest {
+  item_name: string
+  item_id?: number
+  item_instance_slug?: string
+  initial_buyer_name?: string
+  initial_price?: number
+  min_bid?: number
+  bid_increment?: number
+  timer_seconds?: number
+}
+
+export interface CreatePrebidRequest {
+  item_name: string
+  item_id?: number
+  item_instance_slug?: string
+  initial_buyer_name?: string
+  initial_price?: number
+  quantity?: number
+  min_bid?: number
+  bid_increment?: number
+}
