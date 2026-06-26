@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CreateAuctionRequest, CreatePrebidRequest } from '#shared/types/api'
+import type { CreateAuctionRequest, CreatePrebidRequest, Item } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
@@ -39,6 +39,16 @@ function countdown(endsAt: string) {
   if (ms <= 0) return 'closing…'
   const total = Math.floor(ms / 1000)
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+function onAuctionItem(item: Item) {
+  auctionForm.item_name = item.name
+  auctionForm.item_id = item.wow_item_id
+}
+
+function onPrebidItem(item: Item) {
+  prebidForm.item_name = item.name
+  prebidForm.item_id = item.wow_item_id
 }
 
 async function submitAuction() {
@@ -119,14 +129,15 @@ async function submitPrebid() {
           @submit.prevent="submitAuction"
         >
           <UFormField
-            label="Item name"
+            label="Item"
             required
           >
             <UInput
               v-model="auctionForm.item_name"
-              class="w-full"
-              placeholder="e.g. Atiesh"
+              class="mb-2 w-full"
+              placeholder="Pick from the catalog below, or type a custom name"
             />
+            <ItemPicker @select="onAuctionItem" />
           </UFormField>
           <div class="grid grid-cols-3 gap-3">
             <UFormField label="Min bid">
@@ -186,6 +197,12 @@ async function submitPrebid() {
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div class="flex items-center gap-2">
+                <img
+                  v-if="item.item_id"
+                  :src="`/icons/${item.item_id}.jpg`"
+                  class="h-7 w-7 rounded"
+                  alt=""
+                >
                 <strong class="text-lg">{{ item.item_name }}</strong>
                 <UBadge
                   :color="item.status === 'active' ? 'success' : 'neutral'"
@@ -266,14 +283,15 @@ async function submitPrebid() {
           @submit.prevent="submitPrebid"
         >
           <UFormField
-            label="Item name"
+            label="Item"
             required
           >
             <UInput
               v-model="prebidForm.item_name"
-              class="w-full"
-              placeholder="e.g. Sulfuras"
+              class="mb-2 w-full"
+              placeholder="Pick from the catalog below, or type a custom name"
             />
+            <ItemPicker @select="onPrebidItem" />
           </UFormField>
           <div class="grid grid-cols-3 gap-3">
             <UFormField label="Min bid">
@@ -327,6 +345,12 @@ async function submitPrebid() {
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div class="flex items-center gap-2">
+                <img
+                  v-if="item.item_id"
+                  :src="`/icons/${item.item_id}.jpg`"
+                  class="h-7 w-7 rounded"
+                  alt=""
+                >
                 <strong class="text-lg">{{ item.item_name }}</strong>
                 <UBadge
                   :color="item.status === 'open' ? 'primary' : 'neutral'"

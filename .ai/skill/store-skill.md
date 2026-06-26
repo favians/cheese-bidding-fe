@@ -110,3 +110,23 @@ export const useAuthStore = defineStore('auth', () => {
 - views read state/getters and call actions; no business logic leaks into the view
 
 If any item fails, the store is not ready.
+
+## Realtime (SSE) in a store — as built (`stores/bidding.ts`)
+
+Live updates arrive over SSE and **patch state in place** — never refetch the list on every event (that was V1's "omega slow" bug).
+
+- `connect(sessionId)`: open `new EventSource('/api/v1/client/events?session_id=' + id)` (same-origin → Nitro attaches the player token). `addEventListener('auction.updated' | 'auction.created' | 'prebid.*', e => patch(JSON.parse(e.data)))`.
+- `disconnect()`: `source?.close()`; call it in the page's `onBeforeUnmount`.
+- patch helpers replace the matching item by id in the ref array (`findIndex` → assign), or unshift if new. A locally-placed bid uses the **same** patch path (the POST returns the updated entity), so the bidder's own action and others' SSE updates converge with no flicker.
+- the page connects on mount, drops any poll, and keeps one targeted refetch when an auction timer elapses (the scheduler's bulk close doesn't emit SSE).
+- derive transitions in the patch (e.g. "I held the top bid and an update took it" → set an `outbid` ref the page watches for a toast).
+
+Rules:
+- patch in place; do not reload the whole list on an event.
+- `EventSource` only runs client-side — fine here (app is `ssr: false`).
+- always `disconnect()` on unmount; a leaked EventSource reconnects forever.
+- event names must match the BE publisher (`<entity>.<verb>`); see the backend realtime skill.
+
+## List pagination — `requestPaged`
+
+`useApi().request<T>` returns only `envelope.data`. For list endpoints that need the meta, use `requestPaged<T>` → `{ data, pagination }`. Item icons render from `/icons/<wow_item_id>.jpg` (static `public/icons`).

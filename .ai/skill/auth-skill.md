@@ -91,3 +91,16 @@ export function authGuard(to) {
 - no JWT decoding for trust; UI gates on loaded identity only
 
 If any item fails, the auth flow is not ready.
+
+## Two auth contexts (player + admin) — as built
+
+Two independent httpOnly cookies, never mixed:
+- player: `cb_token`, set by `server/api/auth/login.post.ts` (→ Go `/api/v1/auth/login`). Store `useAuthStore`, guard `middleware/auth.ts` → `/`.
+- admin: `cb_admin_token`, set by `server/api/auth/admin-login.post.ts` (→ Go `/api/v1/internal/auth/login`). Store `useAdminAuthStore`, guard `middleware/admin.ts` → `/admin/login`. Logout `admin-logout.post.ts`.
+
+The **Nitro proxy picks the token by path**: `server/api/v1/[...path].ts` attaches `cb_admin_token` for `/api/v1/internal/*`, `cb_token` otherwise. A page just calls `useApi().request('/api/v1/internal/...')` or `'/api/v1/client/...'`; the right token is attached server-side. Cookie names in `runtimeConfig` (`authCookieName`, `adminAuthCookieName`).
+
+Rules:
+- a Nitro login route forwards creds to Go, reads `data.token`, sets the cookie httpOnly+sameSite+secure, returns `{ ok: true }` — never the token.
+- the browser never holds either token. SSE/EventSource works because it's same-origin to Nitro (cookie sent) and Nitro attaches the bearer.
+- admin is NOT a session member → admin screens cannot use the client SSE stream; they poll.

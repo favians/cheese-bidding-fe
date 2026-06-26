@@ -4,6 +4,16 @@
 
 Greenfield **Nuxt 3 + TypeScript** frontend for CheeseBid, replacing the old vanilla-JS SPA. Separate repo from the Go backend (`cheesebidding`). Migrated per module alongside each backend domain slice.
 
+### Built so far
+- **Auth**: player login (`/`) + admin login (`/admin/login`), two httpOnly-cookie contexts; the Nitro proxy attaches the admin token for `/api/v1/internal/*`, the player token otherwise.
+- **Player bidding flow** (the core): `/play` join-by-code → `/play/[id]` live view. Active auctions + open prebids, one-tap quick-bid + custom amount, "Winning" crown when you lead, self-overbid confirm, mm:ss countdown (red+pulse <10s), outbid toast, Results section. Item icons from `/icons/<item_id>.jpg`.
+- **Realtime (SSE)**: `bidding` store opens an `EventSource` to `/api/v1/client/events?session_id=` and patches auctions/prebids in place on `auction.*`/`prebid.*` events — no polling, no refetch. One targeted refetch when a timer elapses (scheduler closes don't emit SSE).
+- **Admin**: session list/create (`/admin`), session control panel (`/admin/sessions/[id]`) — open auctions/prebids via the catalog **ItemPicker**, close/reset/cancel, resolve/cancel prebids, 2s refresh (admin isn't a session member so can't use the client SSE).
+- **Catalog is id-based, no slug**: `Instance` has `id`; `Item` has `id` + `wow_item_id` + `instance_id`; the picker filters by `instance_id`. Icons keyed by `wow_item_id`.
+
+### Remaining
+- admin money UI (incoming/withdrawals/settings); session→instances assignment UI (`session_instances` exists on the BE); profile/character polish.
+
 ## Stack (locked)
 
 - framework: **Nuxt 3** (Vue 3, Composition API, `<script setup>`)

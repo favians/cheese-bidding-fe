@@ -133,6 +133,12 @@ async function bidPrebid(item: Prebid, amount: number) {
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div class="flex items-center gap-2">
+                <img
+                  v-if="item.item_id"
+                  :src="`/icons/${item.item_id}.jpg`"
+                  class="h-7 w-7 rounded"
+                  alt=""
+                >
                 <strong class="text-lg">{{ item.item_name }}</strong>
                 <UBadge
                   v-if="bidding.isMine(item.current_winner_member_id)"
@@ -209,6 +215,12 @@ async function bidPrebid(item: Prebid, amount: number) {
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div class="flex items-center gap-2">
+                <img
+                  v-if="item.item_id"
+                  :src="`/icons/${item.item_id}.jpg`"
+                  class="h-7 w-7 rounded"
+                  alt=""
+                >
                 <strong class="text-lg">{{ item.item_name }}</strong>
                 <UBadge
                   v-if="bidding.isMine(item.current_winner_member_id)"

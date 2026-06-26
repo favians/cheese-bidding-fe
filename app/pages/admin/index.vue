@@ -10,7 +10,6 @@ const { sessions, loading, saving, error } = storeToRefs(sessionsStore)
 const showCreate = ref(false)
 const form = reactive<CreateSessionRequest>({
   title: '',
-  instance_slugs: '',
   bid_currency: 'dollar',
   default_min_bid: 100,
   default_bid_increment: 1,
@@ -30,7 +29,6 @@ async function submitCreate() {
     await sessionsStore.create({ ...form })
     showCreate.value = false
     form.title = ''
-    form.instance_slugs = ''
     form.date_to = ''
   } catch {
     // store exposes error
@@ -103,13 +101,6 @@ async function logout() {
             v-model="form.title"
             class="w-full"
             placeholder="e.g. Karazhan Friday"
-          />
-        </UFormField>
-        <UFormField label="Instances (comma-separated slugs)">
-          <UInput
-            v-model="form.instance_slugs"
-            class="w-full"
-            placeholder="karazhan,gruul"
           />
         </UFormField>
         <div class="grid grid-cols-2 gap-3">
@@ -193,7 +184,7 @@ async function logout() {
               </UBadge>
             </div>
             <div class="mt-1 text-sm opacity-70">
-              Code <span class="font-mono">{{ session.code }}</span> · {{ session.bid_currency }} · min {{ session.default_min_bid }} · {{ session.instance_slugs || 'no instances' }}
+              Code <span class="font-mono">{{ session.code }}</span> · {{ session.bid_currency }} · min {{ session.default_min_bid }}
             </div>
           </div>
           <div class="flex gap-2">

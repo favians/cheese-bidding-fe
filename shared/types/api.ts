@@ -69,7 +69,6 @@ export interface Session {
   default_min_bid: number
   default_bid_increment: number
   default_timer_seconds: number
-  instance_slugs: string
   bid_currency: BidCurrency
   management_cut_percent: number
   player_count: number
@@ -79,7 +78,6 @@ export interface Session {
 
 export interface CreateSessionRequest {
   title: string
-  instance_slugs?: string
   default_min_bid?: number
   default_bid_increment?: number
   default_timer_seconds?: number
@@ -108,7 +106,6 @@ export interface Auction {
   session_id: string
   item_name: string
   item_id: number
-  item_instance_slug: string
   initial_buyer_name: string
   initial_price: number
   status: AuctionStatus
@@ -131,7 +128,6 @@ export interface Prebid {
   session_id: string
   item_name: string
   item_id: number
-  item_instance_slug: string
   status: PrebidStatus
   min_bid: number
   bid_increment: number
@@ -150,7 +146,6 @@ export interface Prebid {
 export interface CreateAuctionRequest {
   item_name: string
   item_id?: number
-  item_instance_slug?: string
   initial_buyer_name?: string
   initial_price?: number
   min_bid?: number
@@ -161,10 +156,26 @@ export interface CreateAuctionRequest {
 export interface CreatePrebidRequest {
   item_name: string
   item_id?: number
-  item_instance_slug?: string
   initial_buyer_name?: string
   initial_price?: number
   quantity?: number
   min_bid?: number
   bid_increment?: number
+}
+
+export interface Instance {
+  id: number
+  name: string
+  expansion: string
+}
+
+export interface Item {
+  id: number
+  wow_item_id: number
+  instance_id: number
+  instance_name: string
+  name: string
+  quality: string
+  boss_name: string
+  icon_path: string
 }
