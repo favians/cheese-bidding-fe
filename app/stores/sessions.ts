@@ -1,4 +1,4 @@
-import type { Session, CreateSessionRequest, Pagination } from '#shared/types/api'
+import type { Session, CreateSessionRequest, Pagination, SessionInstance } from '#shared/types/api'
 
 export const useSessionsStore = defineStore('sessions', () => {
   const sessions = ref<Session[]>([])
@@ -56,5 +56,27 @@ export const useSessionsStore = defineStore('sessions', () => {
     }
   }
 
-  return { sessions, pagination, loading, saving, error, load, create, end }
+  async function getInstances(id: string) {
+    const { request } = useApi()
+    return await request<SessionInstance[]>(`/api/v1/internal/sessions/${id}/instances`)
+  }
+
+  async function setInstances(id: string, instanceIds: number[]) {
+    const { request } = useApi()
+    saving.value = true
+    error.value = ''
+    try {
+      return await request<SessionInstance[]>(`/api/v1/internal/sessions/${id}/instances`, {
+        method: 'PUT',
+        body: { instance_ids: instanceIds }
+      })
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Session instances could not be saved'
+      throw cause
+    } finally {
+      saving.value = false
+    }
+  }
+
+  return { sessions, pagination, loading, saving, error, load, create, end, getInstances, setInstances }
 })

@@ -85,6 +85,7 @@ export interface CreateSessionRequest {
   management_cut_percent?: number
   player_count?: number
   date_to?: string
+  instance_ids?: number[]
 }
 
 export interface SessionMember {
@@ -141,6 +142,7 @@ export interface Prebid {
   quantity: number
   created_at: string
   next_min_bid: number
+  spawned_auction?: Auction | null
 }
 
 export interface CreateAuctionRequest {
@@ -168,6 +170,8 @@ export interface Instance {
   name: string
   expansion: string
 }
+
+export type SessionInstance = Instance
 
 export interface Item {
   id: number

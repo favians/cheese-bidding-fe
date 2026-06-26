@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { Item } from '#shared/types/api'
 
+const props = withDefaults(defineProps<{
+  allowedInstanceIds?: number[]
+}>(), {
+  allowedInstanceIds: () => []
+})
 const emit = defineEmits<{ select: [item: Item] }>()
 
 const catalog = useCatalogStore()
@@ -9,20 +14,42 @@ const instanceID = ref(0)
 const search = ref('')
 let timer: ReturnType<typeof setTimeout> | undefined
 
-const instanceOptions = computed(() => [
-  { label: 'All instances', value: 0 },
-  ...instances.value.map(i => ({ label: i.name, value: i.id }))
-])
+const allowedSet = computed(() => new Set(props.allowedInstanceIds))
+const visibleInstances = computed(() => {
+  if (!props.allowedInstanceIds.length) return instances.value
+  return instances.value.filter(instance => allowedSet.value.has(instance.id))
+})
+
+const instanceOptions = computed(() => {
+  if (props.allowedInstanceIds.length) {
+    return visibleInstances.value.map(i => ({ label: i.name, value: i.id }))
+  }
+  return [
+    { label: 'All instances', value: 0 },
+    ...instances.value.map(i => ({ label: i.name, value: i.id }))
+  ]
+})
 
 onMounted(() => {
-  catalog.loadInstances()
-  catalog.searchItems(0, '')
+  catalog.loadInstances().then(() => syncInstanceSelection())
+  catalog.searchItems(instanceID.value, '')
 })
 
 watch([instanceID, search], () => {
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => catalog.searchItems(instanceID.value, search.value), 250)
 })
+
+watch(() => props.allowedInstanceIds, () => {
+  syncInstanceSelection()
+}, { deep: true })
+
+function syncInstanceSelection() {
+  if (!props.allowedInstanceIds.length) return
+  if (!props.allowedInstanceIds.includes(instanceID.value)) {
+    instanceID.value = props.allowedInstanceIds[0] ?? 0
+  }
+}
 
 function iconUrl(item: Item) {
   return item.icon_path ? `/${item.icon_path}` : `/icons/${item.wow_item_id}.jpg`
@@ -40,6 +67,7 @@ function onIconError(e: globalThis.Event) {
         v-model="instanceID"
         :items="instanceOptions"
         class="w-44"
+        :disabled="props.allowedInstanceIds.length > 0 && !instanceOptions.length"
       />
       <UInput
         v-model="search"

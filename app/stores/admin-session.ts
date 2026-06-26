@@ -2,6 +2,7 @@ import type {
   Session,
   Auction,
   Prebid,
+  SessionInstance,
   SessionMember,
   CreateAuctionRequest,
   CreatePrebidRequest
@@ -12,6 +13,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
   const auctions = ref<Auction[]>([])
   const prebids = ref<Prebid[]>([])
   const members = ref<SessionMember[]>([])
+  const sessionInstances = ref<SessionInstance[]>([])
   const loading = ref(false)
   const saving = ref(false)
   const error = ref('')
@@ -21,16 +23,18 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     loading.value = true
     error.value = ''
     try {
-      const [s, a, p, m] = await Promise.all([
+      const [s, a, p, m, si] = await Promise.all([
         request<Session>(`/api/v1/internal/sessions/${id}`),
         request<Auction[]>(`/api/v1/internal/sessions/${id}/auctions`),
         request<Prebid[]>(`/api/v1/internal/sessions/${id}/prebids`),
-        request<SessionMember[]>(`/api/v1/internal/sessions/${id}/members`)
+        request<SessionMember[]>(`/api/v1/internal/sessions/${id}/members`),
+        request<SessionInstance[]>(`/api/v1/internal/sessions/${id}/instances`)
       ])
       session.value = s
       auctions.value = a ?? []
       prebids.value = p ?? []
       members.value = m ?? []
+      sessionInstances.value = si ?? []
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Failed to load session'
       throw cause
@@ -110,6 +114,9 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     try {
       const updated = await request<Prebid>(`/api/v1/internal/prebids/${id}/${action}`, { method: 'POST' })
       patchPrebid(updated)
+      if (updated.spawned_auction) {
+        patchAuction(updated.spawned_auction)
+      }
       // resolving spawns a new auction; pull the fresh auction list
       if (action === 'resolve') {
         await refresh(sessionId)
@@ -121,14 +128,35 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     }
   }
 
+  async function saveInstances(sessionId: string, instanceIds: number[]) {
+    const { request } = useApi()
+    error.value = ''
+    saving.value = true
+    try {
+      const updated = await request<SessionInstance[]>(`/api/v1/internal/sessions/${sessionId}/instances`, {
+        method: 'PUT',
+        body: { instance_ids: instanceIds }
+      })
+      sessionInstances.value = updated ?? []
+      return updated
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Session instances could not be saved'
+      throw cause
+    } finally {
+      saving.value = false
+    }
+  }
+
   function patchAuction(updated: Auction) {
     const i = auctions.value.findIndex(a => a.id === updated.id)
     if (i >= 0) auctions.value[i] = updated
+    else auctions.value = [updated, ...auctions.value]
   }
 
   function patchPrebid(updated: Prebid) {
     const i = prebids.value.findIndex(p => p.id === updated.id)
     if (i >= 0) prebids.value[i] = updated
+    else prebids.value = [updated, ...prebids.value]
   }
 
   return {
@@ -136,6 +164,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     auctions,
     prebids,
     members,
+    sessionInstances,
     loading,
     saving,
     error,
@@ -144,6 +173,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     createAuction,
     createPrebid,
     auctionAction,
-    prebidAction
+    prebidAction,
+    saveInstances
   }
 })

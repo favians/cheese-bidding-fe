@@ -1,0 +1,452 @@
+.session-admin-shell {
+  width: min(1380px, calc(100% - 28px));
+  margin-inline: auto;
+}
+
+.session-topbar {
+  margin-bottom: 0;
+}
+
+.session-topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.session-admin-grid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.session-admin-sidebar {
+  display: grid;
+  gap: 12px;
+}
+
+.session-panel,
+.session-board {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(8, 19, 28, 0.82), rgba(3, 8, 13, 0.9)),
+    radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.1), transparent 62%);
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.session-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.session-panel h2,
+.session-panel h3 {
+  margin: 0;
+  color: #fff7ed;
+  font-weight: 900;
+}
+
+.session-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.session-muted {
+  margin: 0;
+  color: rgba(255, 247, 237, 0.62);
+  font-size: 0.88rem;
+}
+
+.session-join-code {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(120, 53, 15, 0.2)),
+    rgba(0, 0, 0, 0.18);
+  padding: 12px;
+}
+
+.session-join-code span,
+.session-join-code small {
+  color: rgba(255, 247, 237, 0.62);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.session-join-code strong {
+  color: #fef3c7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.session-join-code small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.session-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.session-metric-grid span {
+  display: grid;
+  gap: 2px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 247, 237, 0.62);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 10px;
+  text-transform: uppercase;
+}
+
+.session-metric-grid strong {
+  color: #fff7ed;
+  font-size: 1.1rem;
+}
+
+.session-instance-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.session-instance-choice {
+  display: grid;
+  gap: 2px;
+  min-height: 48px;
+  border: 1px solid rgba(251, 191, 36, 0.16);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #f8e8c2;
+  padding: 8px 10px;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+.session-instance-choice:hover,
+.session-instance-choice:focus-visible {
+  border-color: rgba(251, 191, 36, 0.36);
+  background: rgba(251, 191, 36, 0.1);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.session-instance-choice.is-selected {
+  border-color: rgba(251, 191, 36, 0.62);
+  background:
+    linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(217, 119, 6, 0.2)),
+    rgba(0, 0, 0, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 24px rgba(251, 191, 36, 0.12);
+}
+
+.session-instance-choice span {
+  overflow: hidden;
+  color: #fff7ed;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-instance-choice small {
+  color: rgba(255, 247, 237, 0.52);
+  font-size: 0.72rem;
+}
+
+.session-form {
+  display: grid;
+  gap: 12px;
+}
+
+.session-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.session-member-list {
+  display: grid;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.session-member-row {
+  display: grid;
+  gap: 2px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 9px 10px;
+}
+
+.session-member-row strong {
+  color: #fff7ed;
+  font-size: 0.9rem;
+}
+
+.session-member-row span {
+  color: rgba(255, 247, 237, 0.58);
+  font-size: 0.78rem;
+}
+
+.session-board {
+  overflow: hidden;
+}
+
+.session-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.08), rgba(255, 255, 255, 0.025));
+  padding: 12px 14px;
+}
+
+.session-board-head.is-subhead {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.session-board-head h3 {
+  margin: 0;
+  color: #fff7ed;
+  font-weight: 900;
+}
+
+.session-board-head > span {
+  color: #fbbf24;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.session-board-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(86px, 1fr));
+  gap: 6px;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px;
+}
+
+.session-board-tabs button {
+  min-height: 34px;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 247, 237, 0.72);
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.session-board-tabs button:hover,
+.session-board-tabs button:focus-visible {
+  border-color: rgba(251, 191, 36, 0.24);
+  background: rgba(251, 191, 36, 0.12);
+  outline: none;
+}
+
+.session-board-tabs button.active {
+  border-color: rgba(251, 191, 36, 0.42);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.28), rgba(217, 119, 6, 0.14));
+  color: #fff7ed;
+}
+
+.session-board-tabs span {
+  margin-left: 4px;
+  color: #fbbf24;
+  font-size: 0.76rem;
+}
+
+.session-empty {
+  padding: 34px 18px;
+  color: rgba(255, 247, 237, 0.62);
+  text-align: center;
+}
+
+.session-card-list {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.session-auction-card {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) minmax(140px, 0.5fr) 112px minmax(220px, 0.7fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 76px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  background:
+    linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(255, 255, 255, 0.035)),
+    linear-gradient(90deg, rgba(28, 25, 23, 0.86), rgba(217, 119, 6, 0.14));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 28px rgba(0, 0, 0, 0.24);
+  padding: 9px;
+}
+
+.session-auction-card.closed,
+.session-auction-card.resolved {
+  background: linear-gradient(135deg, rgba(87, 83, 78, 0.58), rgba(28, 25, 23, 0.82));
+}
+
+.session-auction-card.cancelled {
+  border-color: rgba(127, 29, 29, 0.38);
+  background: linear-gradient(135deg, rgba(69, 10, 10, 0.7), rgba(20, 8, 8, 0.84));
+}
+
+.session-auction-card.is-prebid {
+  grid-template-columns: minmax(240px, 1.3fr) minmax(140px, 0.5fr) 112px minmax(150px, 0.5fr);
+}
+
+.session-loot-cell {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.session-item-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(251, 191, 36, 0.42), transparent 30%),
+    linear-gradient(135deg, rgba(217, 119, 6, 0.52), #130808 55%, rgba(120, 53, 15, 0.25));
+  color: #ffe6a3;
+  font-size: 1.35rem;
+  font-weight: 1000;
+  text-shadow: 0 2px 1px #000;
+}
+
+.session-item-icon img {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.session-loot-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.session-loot-copy strong {
+  overflow: hidden;
+  color: #fbbf24;
+  font-size: 1rem;
+  font-weight: 1000;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
+  white-space: nowrap;
+}
+
+.session-loot-copy span {
+  overflow: hidden;
+  color: rgba(255, 247, 237, 0.66);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-bid-state,
+.session-timer-cell,
+.session-card-result {
+  display: grid;
+  gap: 3px;
+}
+
+.session-bid-state span,
+.session-timer-cell span,
+.session-bid-state small {
+  color: rgba(255, 247, 237, 0.62);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.session-bid-state strong,
+.session-timer-cell strong {
+  color: #fff3b0;
+  font-size: 1.08rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 1000;
+}
+
+.session-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.session-card-result {
+  justify-items: end;
+  color: rgba(255, 247, 237, 0.76);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.session-resolved-block {
+  padding-top: 4px;
+}
+
+@media (max-width: 1180px) {
+  .session-admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-auction-card,
+  .session-auction-card.is-prebid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-card-actions,
+  .session-card-result {
+    justify-content: flex-start;
+    justify-items: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .session-admin-shell {
+    width: min(100% - 18px, 1380px);
+  }
+
+  .session-topbar,
+  .session-topbar-actions,
+  .session-board-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .session-board-tabs,
+  .session-form-row,
+  .session-metric-grid {
+    grid-template-columns: 1fr;
+  }
+}

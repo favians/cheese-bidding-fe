@@ -52,6 +52,7 @@ function countdown(endsAt: string) {
 }
 
 async function bidAuction(item: Auction, amount: number) {
+  if (amount < item.next_min_bid) return
   if (bidding.isMine(item.current_winner_member_id)) {
     if (!window.confirm('You are already winning this item. Bid against yourself anyway?')) return
   }
@@ -64,6 +65,7 @@ async function bidAuction(item: Auction, amount: number) {
 }
 
 async function bidPrebid(item: Prebid, amount: number) {
+  if (amount < item.next_min_bid) return
   if (bidding.isMine(item.current_winner_member_id)) {
     if (!window.confirm('You are already leading this prebid. Bid again anyway?')) return
   }
@@ -73,6 +75,11 @@ async function bidPrebid(item: Prebid, amount: number) {
   } catch {
     // store exposes the error
   }
+}
+
+function canCustomBid(item: Auction | Prebid) {
+  const amount = bidInputs[item.id]
+  return typeof amount === 'number' && amount >= item.next_min_bid
 }
 </script>
 
@@ -183,7 +190,7 @@ async function bidPrebid(item: Prebid, amount: number) {
                 variant="soft"
                 label="Bid"
                 :loading="submitting"
-                :disabled="!bidInputs[item.id]"
+                :disabled="!canCustomBid(item)"
                 @click="bidAuction(item, bidInputs[item.id] ?? item.next_min_bid)"
               />
             </div>
@@ -264,7 +271,7 @@ async function bidPrebid(item: Prebid, amount: number) {
                 variant="soft"
                 label="Bid"
                 :loading="submitting"
-                :disabled="!bidInputs[item.id]"
+                :disabled="!canCustomBid(item)"
                 @click="bidPrebid(item, bidInputs[item.id] ?? item.next_min_bid)"
               />
             </div>

@@ -94,10 +94,15 @@ export const useBiddingStore = defineStore('bidding', () => {
     const es = new EventSource(`/api/v1/client/events?session_id=${encodeURIComponent(sessionId)}`)
     const onAuction = (e: Event) => patchAuction(JSON.parse((e as MessageEvent).data) as Auction)
     const onPrebid = (e: Event) => patchPrebid(JSON.parse((e as MessageEvent).data) as Prebid)
+    const onSessionChanged = () => {
+      void load(sessionId)
+    }
     es.addEventListener('auction.created', onAuction)
     es.addEventListener('auction.updated', onAuction)
     es.addEventListener('prebid.created', onPrebid)
     es.addEventListener('prebid.updated', onPrebid)
+    es.addEventListener('session.updated', onSessionChanged)
+    es.addEventListener('session.deleted', onSessionChanged)
     source.value = es
   }
 
@@ -119,6 +124,9 @@ export const useBiddingStore = defineStore('bidding', () => {
   }
 
   function patchPrebid(updated: Prebid) {
+    if (updated.spawned_auction) {
+      patchAuction(updated.spawned_auction)
+    }
     const i = prebids.value.findIndex(p => p.id === updated.id)
     const prev = i >= 0 ? prebids.value[i] : undefined
     if (prev) {

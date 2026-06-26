@@ -5,7 +5,9 @@ definePageMeta({ middleware: 'admin' })
 
 const adminAuth = useAdminAuthStore()
 const sessionsStore = useSessionsStore()
+const catalog = useCatalogStore()
 const { sessions, loading, saving, error } = storeToRefs(sessionsStore)
+const { instances } = storeToRefs(catalog)
 
 const showCreate = ref(false)
 const form = reactive<CreateSessionRequest>({
@@ -16,20 +18,47 @@ const form = reactive<CreateSessionRequest>({
   default_timer_seconds: 5400,
   date_to: ''
 })
+const selectedInstanceIds = ref<number[]>([])
+const autoTitle = ref('')
+
+const selectedInstances = computed(() => instances.value.filter(instance => selectedInstanceIds.value.includes(instance.id)))
 
 onMounted(() => {
   sessionsStore.load()
+  catalog.loadInstances()
 })
+
+watch(selectedInstanceIds, () => {
+  const nextTitle = selectedInstances.value.map(instance => instance.name).join(' + ')
+  if (!form.title || form.title === autoTitle.value) {
+    form.title = nextTitle
+  }
+  autoTitle.value = nextTitle
+}, { deep: true })
+
+function toggleInstance(id: number) {
+  if (selectedInstanceIds.value.includes(id)) {
+    selectedInstanceIds.value = selectedInstanceIds.value.filter(instanceID => instanceID !== id)
+    return
+  }
+  selectedInstanceIds.value = [...selectedInstanceIds.value, id]
+}
+
+function isInstanceSelected(id: number) {
+  return selectedInstanceIds.value.includes(id)
+}
 
 async function submitCreate() {
   if (!form.title.trim()) {
     return
   }
   try {
-    await sessionsStore.create({ ...form })
+    await sessionsStore.create({ ...form, instance_ids: selectedInstanceIds.value })
     showCreate.value = false
     form.title = ''
     form.date_to = ''
+    selectedInstanceIds.value = []
+    autoTitle.value = ''
   } catch {
     // store exposes error
   }
@@ -102,6 +131,21 @@ async function logout() {
             class="w-full"
             placeholder="e.g. Karazhan Friday"
           />
+        </UFormField>
+        <UFormField label="Raid instances">
+          <div class="session-instance-picker">
+            <button
+              v-for="instance in instances"
+              :key="instance.id"
+              type="button"
+              class="session-instance-choice"
+              :class="{ 'is-selected': isInstanceSelected(instance.id) }"
+              @click="toggleInstance(instance.id)"
+            >
+              <span>{{ instance.name }}</span>
+              <small>{{ instance.expansion }}</small>
+            </button>
+          </div>
         </UFormField>
         <div class="grid grid-cols-2 gap-3">
           <UFormField label="Min bid">
