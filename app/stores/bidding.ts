@@ -4,6 +4,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   const auctions = ref<Auction[]>([])
   const prebids = ref<Prebid[]>([])
   const myMember = ref<SessionMember | null>(null)
+  const members = ref<SessionMember[]>([])
   const loading = ref(false)
   const bidding = ref(false)
   const error = ref('')
@@ -27,6 +28,22 @@ export const useBiddingStore = defineStore('bidding', () => {
     } catch {
       myMember.value = null
     }
+  }
+
+  async function loadMembers(sessionId: string) {
+    const { request } = useApi()
+    try {
+      members.value = await request<SessionMember[]>(`/api/v1/client/members?session_id=${encodeURIComponent(sessionId)}`)
+    } catch {
+      members.value = []
+    }
+  }
+
+  // display name for the current winner; 'You' when it's the caller
+  function memberName(memberId: string) {
+    if (!memberId) return '—'
+    if (myMember.value && memberId === myMember.value.id) return 'You'
+    return members.value.find(m => m.id === memberId)?.character_name ?? 'Unknown'
   }
 
   async function load(sessionId: string) {
@@ -156,8 +173,11 @@ export const useBiddingStore = defineStore('bidding', () => {
     closedAuctions,
     lastOutbid,
     myMember,
+    members,
     isMine,
+    memberName,
     loadMyMember,
+    loadMembers,
     loading,
     bidding,
     error,

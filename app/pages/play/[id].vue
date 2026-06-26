@@ -19,21 +19,14 @@ const bidInputs = reactive<Record<string, number | undefined>>({})
 
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
-const expiredRefetched = new Set<string>()
 
 onMounted(() => {
   bidding.load(sessionId.value)
   bidding.loadMyMember(sessionId.value)
+  bidding.loadMembers(sessionId.value)
   bidding.connect(sessionId.value)
-  clock = setInterval(() => {
-    now.value = Date.now()
-    for (const a of activeAuctions.value) {
-      if (!expiredRefetched.has(a.id) && new Date(a.ends_at).getTime() <= now.value) {
-        expiredRefetched.add(a.id)
-        bidding.load(sessionId.value)
-      }
-    }
-  }, 1000)
+  // timer auto-closes now arrive over SSE (scheduler publishes); just tick the clock
+  clock = setInterval(() => (now.value = Date.now()), 1000)
 })
 
 onBeforeUnmount(() => {
@@ -143,7 +136,7 @@ function canCustomBid(item: Auction | Prebid) {
                 <img
                   v-if="item.item_id"
                   :src="`/icons/${item.item_id}.jpg`"
-                  class="h-7 w-7 rounded"
+                  class="h-11 w-11 rounded ring-1 ring-white/15"
                   alt=""
                 >
                 <strong class="text-lg">{{ item.item_name }}</strong>
@@ -158,6 +151,7 @@ function canCustomBid(item: Auction | Prebid) {
               </div>
               <div class="mt-1 text-sm opacity-80">
                 Current <strong>{{ item.current_bid || '—' }}</strong>
+                <span v-if="item.current_winner_member_id">· {{ bidding.memberName(item.current_winner_member_id) }} leading</span>
                 · {{ item.bid_count }} bids
               </div>
             </div>
@@ -225,7 +219,7 @@ function canCustomBid(item: Auction | Prebid) {
                 <img
                   v-if="item.item_id"
                   :src="`/icons/${item.item_id}.jpg`"
-                  class="h-7 w-7 rounded"
+                  class="h-11 w-11 rounded ring-1 ring-white/15"
                   alt=""
                 >
                 <strong class="text-lg">{{ item.item_name }}</strong>
@@ -247,6 +241,7 @@ function canCustomBid(item: Auction | Prebid) {
               </div>
               <div class="mt-1 text-sm opacity-80">
                 Current <strong>{{ item.current_bid || '—' }}</strong>
+                <span v-if="item.current_winner_member_id">· {{ bidding.memberName(item.current_winner_member_id) }} leading</span>
                 · {{ item.bid_count }} bids
               </div>
             </div>
@@ -304,7 +299,7 @@ function canCustomBid(item: Auction | Prebid) {
               🎉 You won for <strong>{{ item.winning_bid }}</strong>
             </template>
             <template v-else-if="item.winning_bid">
-              sold for <strong>{{ item.winning_bid }}</strong>
+              {{ bidding.memberName(item.winner_member_id) }} won for <strong>{{ item.winning_bid }}</strong>
             </template>
             <template v-else>no bids</template>
           </span>
