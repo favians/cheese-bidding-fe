@@ -8,8 +8,12 @@ export const useBiddingStore = defineStore('bidding', () => {
   const bidding = ref(false)
   const error = ref('')
 
+  // most recent moment the caller lost a top bid (page watches this for a toast)
+  const lastOutbid = ref<{ name: string, ts: number } | null>(null)
+
   const activeAuctions = computed(() => auctions.value.filter(a => a.status === 'active'))
   const openPrebids = computed(() => prebids.value.filter(p => p.status === 'open'))
+  const closedAuctions = computed(() => auctions.value.filter(a => a.status !== 'active'))
 
   // true when the caller is the current top bidder on the given winner id
   function isMine(winnerMemberId: string) {
@@ -105,7 +109,9 @@ export const useBiddingStore = defineStore('bidding', () => {
   // patch in place so the list does not flicker/refetch on every bid
   function patchAuction(updated: Auction) {
     const i = auctions.value.findIndex(a => a.id === updated.id)
-    if (i >= 0) {
+    const prev = i >= 0 ? auctions.value[i] : undefined
+    if (prev) {
+      detectOutbid(prev, updated)
       auctions.value[i] = updated
     } else {
       auctions.value = [updated, ...auctions.value]
@@ -114,10 +120,23 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   function patchPrebid(updated: Prebid) {
     const i = prebids.value.findIndex(p => p.id === updated.id)
-    if (i >= 0) {
+    const prev = i >= 0 ? prebids.value[i] : undefined
+    if (prev) {
+      detectOutbid(prev, updated)
       prebids.value[i] = updated
     } else {
       prebids.value = [updated, ...prebids.value]
+    }
+  }
+
+  // flag when an incoming update took the top bid away from the caller
+  function detectOutbid(prev: Auction | Prebid, next: Auction | Prebid) {
+    if (
+      isMine(prev.current_winner_member_id)
+      && !isMine(next.current_winner_member_id)
+      && next.bid_count > prev.bid_count
+    ) {
+      lastOutbid.value = { name: next.item_name, ts: Date.now() }
     }
   }
 
@@ -126,6 +145,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     prebids,
     activeAuctions,
     openPrebids,
+    closedAuctions,
+    lastOutbid,
     myMember,
     isMine,
     loadMyMember,

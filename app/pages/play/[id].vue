@@ -6,7 +6,14 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const bidding = useBiddingStore()
-const { activeAuctions, openPrebids, loading, bidding: submitting, error } = storeToRefs(bidding)
+const { activeAuctions, openPrebids, closedAuctions, lastOutbid, loading, bidding: submitting, error } = storeToRefs(bidding)
+
+const toast = useToast()
+watch(lastOutbid, (v) => {
+  if (v) {
+    toast.add({ title: 'Outbid!', description: v.name, color: 'error', icon: 'i-lucide-bell-ring' })
+  }
+})
 
 const bidInputs = reactive<Record<string, number | undefined>>({})
 
@@ -251,6 +258,38 @@ async function bidPrebid(item: Prebid, amount: number) {
             </div>
           </div>
         </UCard>
+      </div>
+    </section>
+
+    <section
+      v-if="closedAuctions.length"
+      class="mt-8"
+    >
+      <h2 class="mb-3 text-lg font-semibold">
+        Results
+      </h2>
+      <div class="grid gap-2">
+        <div
+          v-for="item in closedAuctions"
+          :key="item.id"
+          class="flex items-center justify-between rounded-lg px-3 py-2 text-sm opacity-90"
+          :class="bidding.isMine(item.winner_member_id) ? 'bg-(--color-cheese-400)/15' : 'bg-white/5'"
+        >
+          <span>
+            <strong>{{ item.item_name }}</strong>
+            <span class="ml-2 opacity-70">{{ item.status }}</span>
+          </span>
+          <span>
+            <template v-if="item.status === 'cancelled'">cancelled</template>
+            <template v-else-if="bidding.isMine(item.winner_member_id)">
+              🎉 You won for <strong>{{ item.winning_bid }}</strong>
+            </template>
+            <template v-else-if="item.winning_bid">
+              sold for <strong>{{ item.winning_bid }}</strong>
+            </template>
+            <template v-else>no bids</template>
+          </span>
+        </div>
       </div>
     </section>
   </main>
