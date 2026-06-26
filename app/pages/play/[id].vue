@@ -8,23 +8,18 @@ const sessionId = computed(() => String(route.params.id))
 const bidding = useBiddingStore()
 const { activeAuctions, openPrebids, loading, bidding: submitting, error } = storeToRefs(bidding)
 
-// bid amount per item id (defaults to the item's next minimum)
 const bidInputs = reactive<Record<string, number | undefined>>({})
 
-// ticking clock for live countdowns
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
-// auctions we've already refetched once after their timer elapsed
 const expiredRefetched = new Set<string>()
 
 onMounted(() => {
   bidding.load(sessionId.value)
-  // realtime: bids/opens/closes arrive over SSE and patch in place
+  bidding.loadMyMember(sessionId.value)
   bidding.connect(sessionId.value)
   clock = setInterval(() => {
     now.value = Date.now()
-    // the scheduler's bulk auto-close does not emit SSE; refetch once per
-    // auction when its timer elapses so the closed state shows up
     for (const a of activeAuctions.value) {
       if (!expiredRefetched.has(a.id) && new Date(a.ends_at).getTime() <= now.value) {
         expiredRefetched.add(a.id)
@@ -39,17 +34,20 @@ onBeforeUnmount(() => {
   bidding.disconnect()
 })
 
-function countdown(endsAt: string) {
-  const ms = new Date(endsAt).getTime() - now.value
-  if (ms <= 0) return 'closing…'
-  const total = Math.floor(ms / 1000)
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+function secondsLeft(endsAt: string) {
+  return Math.max(0, Math.floor((new Date(endsAt).getTime() - now.value) / 1000))
 }
 
-async function bidAuction(item: Auction) {
-  const amount = bidInputs[item.id] ?? item.next_min_bid
+function countdown(endsAt: string) {
+  const total = secondsLeft(endsAt)
+  if (total <= 0) return 'closing…'
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+async function bidAuction(item: Auction, amount: number) {
+  if (bidding.isMine(item.current_winner_member_id)) {
+    if (!window.confirm('You are already winning this item. Bid against yourself anyway?')) return
+  }
   try {
     await bidding.placeBid(item.id, amount)
     bidInputs[item.id] = undefined
@@ -58,8 +56,10 @@ async function bidAuction(item: Auction) {
   }
 }
 
-async function bidPrebid(item: Prebid) {
-  const amount = bidInputs[item.id] ?? item.next_min_bid
+async function bidPrebid(item: Prebid, amount: number) {
+  if (bidding.isMine(item.current_winner_member_id)) {
+    if (!window.confirm('You are already leading this prebid. Bid again anyway?')) return
+  }
   try {
     await bidding.placePrebidBid(item.id, amount)
     bidInputs[item.id] = undefined
@@ -121,38 +121,59 @@ async function bidPrebid(item: Prebid) {
           v-for="item in activeAuctions"
           :key="item.id"
           class="profile-hero-card"
+          :class="{ 'ring-2 ring-(--color-cheese-400)': bidding.isMine(item.current_winner_member_id) }"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <strong class="text-lg">{{ item.item_name }}</strong>
+              <div class="flex items-center gap-2">
+                <strong class="text-lg">{{ item.item_name }}</strong>
+                <UBadge
+                  v-if="bidding.isMine(item.current_winner_member_id)"
+                  color="success"
+                  variant="solid"
+                  icon="i-lucide-crown"
+                >
+                  Winning
+                </UBadge>
+              </div>
               <div class="mt-1 text-sm opacity-80">
                 Current <strong>{{ item.current_bid || '—' }}</strong>
-                · next min {{ item.next_min_bid }}
                 · {{ item.bid_count }} bids
               </div>
             </div>
             <UBadge
-              color="warning"
+              :color="secondsLeft(item.ends_at) <= 10 ? 'error' : 'warning'"
               variant="soft"
               icon="i-lucide-timer"
+              :class="{ 'animate-pulse': secondsLeft(item.ends_at) <= 10 }"
             >
               {{ countdown(item.ends_at) }}
             </UBadge>
           </div>
-          <div class="mt-3 flex items-center gap-2">
-            <UInput
-              v-model.number="bidInputs[item.id]"
-              type="number"
-              class="w-40"
-              :placeholder="String(item.next_min_bid)"
-            />
+          <div class="mt-3 flex flex-wrap items-center gap-2">
             <UButton
               color="primary"
               icon="i-lucide-gavel"
-              label="Bid"
+              :label="`Bid ${item.next_min_bid}`"
               :loading="submitting"
-              @click="bidAuction(item)"
+              @click="bidAuction(item, item.next_min_bid)"
             />
+            <div class="flex items-center gap-1">
+              <UInput
+                v-model.number="bidInputs[item.id]"
+                type="number"
+                class="w-32"
+                :placeholder="`> ${item.next_min_bid}`"
+              />
+              <UButton
+                color="neutral"
+                variant="soft"
+                label="Bid"
+                :loading="submitting"
+                :disabled="!bidInputs[item.id]"
+                @click="bidAuction(item, bidInputs[item.id] ?? item.next_min_bid)"
+              />
+            </div>
           </div>
         </UCard>
       </div>
@@ -176,37 +197,58 @@ async function bidPrebid(item: Prebid) {
           v-for="item in openPrebids"
           :key="item.id"
           class="profile-hero-card"
+          :class="{ 'ring-2 ring-(--color-cheese-400)': bidding.isMine(item.current_winner_member_id) }"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <strong class="text-lg">{{ item.item_name }}</strong>
+              <div class="flex items-center gap-2">
+                <strong class="text-lg">{{ item.item_name }}</strong>
+                <UBadge
+                  v-if="bidding.isMine(item.current_winner_member_id)"
+                  color="success"
+                  variant="solid"
+                  icon="i-lucide-crown"
+                >
+                  Leading
+                </UBadge>
+                <UBadge
+                  v-else
+                  color="neutral"
+                  variant="soft"
+                >
+                  prebid
+                </UBadge>
+              </div>
               <div class="mt-1 text-sm opacity-80">
                 Current <strong>{{ item.current_bid || '—' }}</strong>
-                · next min {{ item.next_min_bid }}
                 · {{ item.bid_count }} bids
               </div>
             </div>
-            <UBadge
-              color="neutral"
-              variant="soft"
-            >
-              prebid
-            </UBadge>
           </div>
-          <div class="mt-3 flex items-center gap-2">
-            <UInput
-              v-model.number="bidInputs[item.id]"
-              type="number"
-              class="w-40"
-              :placeholder="String(item.next_min_bid)"
-            />
+          <div class="mt-3 flex flex-wrap items-center gap-2">
             <UButton
               color="primary"
               icon="i-lucide-gavel"
-              label="Prebid"
+              :label="`Prebid ${item.next_min_bid}`"
               :loading="submitting"
-              @click="bidPrebid(item)"
+              @click="bidPrebid(item, item.next_min_bid)"
             />
+            <div class="flex items-center gap-1">
+              <UInput
+                v-model.number="bidInputs[item.id]"
+                type="number"
+                class="w-32"
+                :placeholder="`> ${item.next_min_bid}`"
+              />
+              <UButton
+                color="neutral"
+                variant="soft"
+                label="Bid"
+                :loading="submitting"
+                :disabled="!bidInputs[item.id]"
+                @click="bidPrebid(item, bidInputs[item.id] ?? item.next_min_bid)"
+              />
+            </div>
           </div>
         </UCard>
       </div>

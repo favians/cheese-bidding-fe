@@ -1,14 +1,29 @@
-import type { Auction, Prebid } from '#shared/types/api'
+import type { Auction, Prebid, SessionMember } from '#shared/types/api'
 
 export const useBiddingStore = defineStore('bidding', () => {
   const auctions = ref<Auction[]>([])
   const prebids = ref<Prebid[]>([])
+  const myMember = ref<SessionMember | null>(null)
   const loading = ref(false)
   const bidding = ref(false)
   const error = ref('')
 
   const activeAuctions = computed(() => auctions.value.filter(a => a.status === 'active'))
   const openPrebids = computed(() => prebids.value.filter(p => p.status === 'open'))
+
+  // true when the caller is the current top bidder on the given winner id
+  function isMine(winnerMemberId: string) {
+    return !!myMember.value && winnerMemberId === myMember.value.id
+  }
+
+  async function loadMyMember(sessionId: string) {
+    const { request } = useApi()
+    try {
+      myMember.value = await request<SessionMember>(`/api/v1/client/members/me?session_id=${encodeURIComponent(sessionId)}`)
+    } catch {
+      myMember.value = null
+    }
+  }
 
   async function load(sessionId: string) {
     const { request } = useApi()
@@ -111,6 +126,9 @@ export const useBiddingStore = defineStore('bidding', () => {
     prebids,
     activeAuctions,
     openPrebids,
+    myMember,
+    isMine,
+    loadMyMember,
     loading,
     bidding,
     error,
