@@ -14,18 +14,29 @@ const bidInputs = reactive<Record<string, number | undefined>>({})
 // ticking clock for live countdowns
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
-let poll: ReturnType<typeof setInterval> | undefined
+// auctions we've already refetched once after their timer elapsed
+const expiredRefetched = new Set<string>()
 
 onMounted(() => {
   bidding.load(sessionId.value)
-  clock = setInterval(() => (now.value = Date.now()), 1000)
-  // TODO: replace polling with SSE once the realtime stream lands
-  poll = setInterval(() => bidding.load(sessionId.value), 3000)
+  // realtime: bids/opens/closes arrive over SSE and patch in place
+  bidding.connect(sessionId.value)
+  clock = setInterval(() => {
+    now.value = Date.now()
+    // the scheduler's bulk auto-close does not emit SSE; refetch once per
+    // auction when its timer elapses so the closed state shows up
+    for (const a of activeAuctions.value) {
+      if (!expiredRefetched.has(a.id) && new Date(a.ends_at).getTime() <= now.value) {
+        expiredRefetched.add(a.id)
+        bidding.load(sessionId.value)
+      }
+    }
+  }, 1000)
 })
 
 onBeforeUnmount(() => {
   if (clock) clearInterval(clock)
-  if (poll) clearInterval(poll)
+  bidding.disconnect()
 })
 
 function countdown(endsAt: string) {

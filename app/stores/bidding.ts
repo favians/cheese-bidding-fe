@@ -67,6 +67,26 @@ export const useBiddingStore = defineStore('bidding', () => {
     }
   }
 
+  // --- realtime (SSE) ---
+  const source = ref<EventSource | null>(null)
+
+  function connect(sessionId: string) {
+    disconnect()
+    const es = new EventSource(`/api/v1/client/events?session_id=${encodeURIComponent(sessionId)}`)
+    const onAuction = (e: Event) => patchAuction(JSON.parse((e as MessageEvent).data) as Auction)
+    const onPrebid = (e: Event) => patchPrebid(JSON.parse((e as MessageEvent).data) as Prebid)
+    es.addEventListener('auction.created', onAuction)
+    es.addEventListener('auction.updated', onAuction)
+    es.addEventListener('prebid.created', onPrebid)
+    es.addEventListener('prebid.updated', onPrebid)
+    source.value = es
+  }
+
+  function disconnect() {
+    source.value?.close()
+    source.value = null
+  }
+
   // patch in place so the list does not flicker/refetch on every bid
   function patchAuction(updated: Auction) {
     const i = auctions.value.findIndex(a => a.id === updated.id)
@@ -96,6 +116,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     error,
     load,
     placeBid,
-    placePrebidBid
+    placePrebidBid,
+    connect,
+    disconnect
   }
 })
