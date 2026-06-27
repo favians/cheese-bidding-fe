@@ -124,6 +124,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     es.addEventListener('prebid.created', onPrebid)
     es.addEventListener('prebid.updated', onPrebid)
     es.addEventListener('session.updated', onSessionChanged)
+    es.addEventListener('session.ended', onSessionChanged)
     es.addEventListener('session.deleted', onSessionDeleted)
     source.value = es
   }

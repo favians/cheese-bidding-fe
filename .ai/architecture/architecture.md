@@ -8,13 +8,14 @@ Greenfield **Nuxt 3 + TypeScript** frontend for CheeseBid, replacing the old van
 - **Auth**: player login (`/`) + admin login (`/admin/login`), two httpOnly-cookie contexts; the Nitro proxy attaches the admin token for `/api/v1/internal/*`, the player token otherwise.
 - **Player bidding flow** (the core): `/play` join-by-code → `/play/[id]` live view. Active auctions + open prebids, one-tap quick-bid + custom amount, "Winning" crown when you lead, self-overbid confirm, mm:ss countdown (red+pulse <10s), outbid toast, Results section. Item icons from `/icons/<item_id>.jpg`.
 - **Realtime (SSE)**: `bidding` store opens an `EventSource` to `/api/v1/client/events?session_id=` and patches auctions/prebids in place on `auction.*`/`prebid.*` events — no polling, no timer refetch. Backend scheduler auto-close emits `auction.updated`.
+- **Session end compatibility**: FE listens to both V2 `session.updated` and V1-compatible `session.ended`; both trigger one bidding-state refetch.
 - **Session deletion UX**: `session.deleted` closes SSE, clears live rows, and shows a "Session unavailable" state with a back-to-join action.
 - **Admin**: session list/create (`/admin`) with instance picker, session control panel (`/admin/sessions/[id]`) with session-instance assignment — open auctions/prebids via the catalog **ItemPicker**, close/reset/cancel, resolve/cancel prebids, 2s refresh (admin isn't a session member so can't use the client SSE). Admin players (`/admin/players`) has search, active/inactive filter, pagination, favorite/active toggles, Discord edit, password reset reveal, expandable character management, and balance detail drilldown. Admin money (`/admin/money`) exists.
 - **Catalog is id-based, no slug**: `Instance` has `id`; `Item` has `id` + `wow_item_id` + `instance_id`; the picker filters by `instance_id`. Icons keyed by `wow_item_id`.
 
 ### Remaining
 - admin players V1 parity polish: deeper V1-like styling. Status filter, pagination, password reset flow, character management, and balance detail drilldown are in place.
-- session/bidding hardening: optional `session.ended` compatibility event, ended-session player copy, and broader edge-case tests.
+- session/bidding hardening: ended-session player copy and broader edge-case tests.
 - profile/character polish and V1 SQLite → Postgres migration support.
 
 ## Stack (locked)
