@@ -98,6 +98,13 @@ async function logout() {
         <UButton
           color="neutral"
           variant="soft"
+          icon="i-lucide-users"
+          label="Players"
+          to="/admin/players"
+        />
+        <UButton
+          color="neutral"
+          variant="soft"
           icon="i-lucide-banknote"
           label="Money"
           to="/admin/money"

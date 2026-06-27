@@ -259,3 +259,18 @@ export interface SettingResponse {
   key: string
   value: string
 }
+
+export interface ClientAdmin {
+  id: number
+  username: string
+  discord_id: string
+  is_active: boolean
+  is_favorite: boolean
+  created_at: string
+}
+
+export interface AdminCreateClientRequest {
+  username: string
+  password: string
+  discord_id: string
+}
