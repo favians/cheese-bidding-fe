@@ -8,9 +8,9 @@ const adminAuth = useAdminAuthStore()
 const route = useRoute()
 
 const navItems = [
-  { label: 'Sessions', icon: 'i-lucide-gavel', to: '/admin' },
+  { label: 'Sessions', icon: 'i-lucide-layout-dashboard', to: '/admin' },
   { label: 'Players', icon: 'i-lucide-users', to: '/admin/players' },
-  { label: 'Money', icon: 'i-lucide-banknote', to: '/admin/money' }
+  { label: 'Money', icon: 'i-lucide-wallet-cards', to: '/admin/money' }
 ]
 
 function isActive(to: string) {
@@ -24,16 +24,21 @@ async function logout() {
 </script>
 
 <template>
-  <header class="topbar admin-nav">
-    <div class="brand">
-      <div class="brand-head">
-        <span class="brand-logo">🧀 Cheese GDKP</span>
+  <header class="admin-navbar">
+    <div class="admin-navbar-brand">
+      <div class="admin-navbar-mark">
+        🧀
       </div>
-      <h1>{{ title }}</h1>
-      <p>{{ subtitle ?? (adminAuth.profile?.username ? `${adminAuth.profile.username} · admin` : 'admin') }}</p>
+      <div class="admin-navbar-title">
+        <span>Cheese GDKP</span>
+        <h1>{{ title }}</h1>
+      </div>
     </div>
-    <nav class="nav-actions">
-      <slot name="actions" />
+
+    <nav
+      class="admin-navbar-links"
+      aria-label="Admin navigation"
+    >
       <UButton
         v-for="item in navItems"
         :key="item.to"
@@ -43,15 +48,27 @@ async function logout() {
         size="sm"
         :color="isActive(item.to) ? 'primary' : 'neutral'"
         :variant="isActive(item.to) ? 'solid' : 'soft'"
+        class="admin-navbar-link"
       />
+    </nav>
+
+    <div class="admin-navbar-actions">
+      <slot name="actions" />
+      <div class="admin-navbar-user">
+        <UIcon
+          name="i-lucide-shield-check"
+          class="admin-navbar-user-icon"
+        />
+        <span>{{ subtitle ?? (adminAuth.profile?.username ? `${adminAuth.profile.username} · admin` : 'admin') }}</span>
+      </div>
       <UButton
         color="neutral"
         variant="ghost"
         icon="i-lucide-log-out"
-        label="Logout"
+        aria-label="Logout"
         size="sm"
         @click="logout"
       />
-    </nav>
+    </div>
   </header>
 </template>

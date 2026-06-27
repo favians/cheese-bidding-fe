@@ -175,25 +175,17 @@ async function submitPrebid() {
 
 <template>
   <main class="public-shell session-admin-shell">
-    <header class="topbar session-topbar">
-      <div class="brand">
-        <div class="brand-head">
-          <span class="brand-logo">🧀 Cheese GDKP</span>
-          <UBadge
-            :color="session?.status === 'active' ? 'success' : 'neutral'"
-            variant="soft"
-          >
-            {{ session?.status || 'loading' }}
-          </UBadge>
-        </div>
-        <h1>{{ session?.title || 'Session' }}</h1>
-        <p>
-          Code <span class="font-mono">{{ session?.code || '—' }}</span>
-          · {{ members.length }} players
-          · {{ selectedInstances.map(instance => instance.name).join(' + ') || 'All instances' }}
-        </p>
-      </div>
-      <div class="session-topbar-actions">
+    <AdminNav
+      :title="session?.title || 'Session'"
+      :subtitle="`Code ${session?.code || '—'} · ${members.length} players · ${selectedInstances.map(instance => instance.name).join(' + ') || 'All instances'} · ${session?.status || 'loading'}`"
+    >
+      <template #actions>
+        <UBadge
+          :color="session?.status === 'active' ? 'success' : 'neutral'"
+          variant="soft"
+        >
+          {{ session?.status || 'loading' }}
+        </UBadge>
         <UButton
           color="primary"
           variant="soft"
@@ -208,8 +200,8 @@ async function submitPrebid() {
           label="Sessions"
           to="/admin"
         />
-      </div>
-    </header>
+      </template>
+    </AdminNav>
 
     <UAlert
       v-if="error"
