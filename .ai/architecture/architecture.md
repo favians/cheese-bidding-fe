@@ -11,6 +11,7 @@ Greenfield **Nuxt 3 + TypeScript** frontend for CheeseBid, replacing the old van
 - **Session end compatibility**: FE listens to both V2 `session.updated` and V1-compatible `session.ended`; both trigger one bidding-state refetch.
 - **Session ended UX**: `session.ended` keeps the final state visible and shows a clear "Session ended" banner above results.
 - **Session deletion UX**: `session.deleted` closes SSE, clears live rows, and shows a "Session unavailable" state with a back-to-join action.
+- **Live bidding V1 UI parity**: `/play/[id]` uses V1-like auction/prebid rows (`auction-card`, `loot-cell`, `item-icon`, `bid-state`, `timer-cell`, `bid-controls`) and the global cheese watermark is scoped to login/join pages only, so live/session pages keep the darker raid-board look.
 - **Admin**: session list/create (`/admin`) with instance picker, session control panel (`/admin/sessions/[id]`) with session-instance assignment — open auctions/prebids via the catalog **ItemPicker**, close/reset/cancel, resolve/cancel prebids, 2s refresh (admin isn't a session member so can't use the client SSE). Admin players (`/admin/players`) has search, active/inactive filter, pagination, favorite/active toggles, Discord edit, password reset reveal, expandable character management, and balance detail drilldown. Admin money (`/admin/money`) exists.
 - **Catalog is id-based, no slug**: `Instance` has `id`; `Item` has `id` + `wow_item_id` + `instance_id`; the picker filters by `instance_id`. Icons keyed by `wow_item_id`.
 

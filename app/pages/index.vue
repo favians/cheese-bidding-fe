@@ -23,7 +23,7 @@ async function submitLogin() {
 </script>
 
 <template>
-  <main class="public-shell">
+  <main class="public-shell login-shell">
     <header class="topbar">
       <div class="brand">
         <div class="brand-head">

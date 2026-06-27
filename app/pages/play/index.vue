@@ -19,7 +19,7 @@ async function submit() {
 </script>
 
 <template>
-  <main class="public-shell">
+  <main class="public-shell join-shell">
     <header class="topbar">
       <div class="brand">
         <div class="brand-head">

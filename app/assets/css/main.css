@@ -2,6 +2,7 @@
 @import "@nuxt/ui";
 @import "./identity.css";
 @import "./characters.css";
+@import "./bidding.css";
 @import "./session-admin.css";
 
 @theme static {

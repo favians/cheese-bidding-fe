@@ -182,7 +182,8 @@ body::after {
 }
 
 /* Cheese logo watermark, centered behind the login page. */
-.public-shell::before {
+.login-shell::before,
+.join-shell::before {
   content: "";
   position: fixed;
   inset: 0;
