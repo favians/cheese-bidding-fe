@@ -23,23 +23,27 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     loading.value = true
     error.value = ''
     try {
-      const [s, a, p, m, si] = await Promise.all([
+      const [s, a, p, m] = await Promise.all([
         request<Session>(`/api/v1/internal/sessions/${id}`),
         request<Auction[]>(`/api/v1/internal/sessions/${id}/auctions`),
         request<Prebid[]>(`/api/v1/internal/sessions/${id}/prebids`),
-        request<SessionMember[]>(`/api/v1/internal/sessions/${id}/members`),
-        request<SessionInstance[]>(`/api/v1/internal/sessions/${id}/instances`)
+        request<SessionMember[]>(`/api/v1/internal/sessions/${id}/members`)
       ])
       session.value = s
       auctions.value = a ?? []
       prebids.value = p ?? []
       members.value = m ?? []
-      sessionInstances.value = si ?? []
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Failed to load session'
       throw cause
     } finally {
       loading.value = false
+    }
+    // instances is non-critical: a failure here must not blank the session panel
+    try {
+      sessionInstances.value = await request<SessionInstance[]>(`/api/v1/internal/sessions/${id}/instances`) ?? []
+    } catch {
+      sessionInstances.value = []
     }
   }
 
