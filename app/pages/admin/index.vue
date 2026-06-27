@@ -78,8 +78,8 @@ async function endSession(id: string) {
       <template #actions>
         <UButton
           color="primary"
-          icon="i-lucide-plus"
-          label="New session"
+          :icon="showCreate ? 'i-lucide-list' : 'i-lucide-plus'"
+          :label="showCreate ? 'Session list' : 'New session'"
           @click="showCreate = !showCreate"
         />
       </template>
@@ -172,64 +172,75 @@ async function endSession(id: string) {
           class="justify-center"
           :loading="saving"
         />
+        <UButton
+          color="neutral"
+          variant="ghost"
+          label="Back to session list"
+          icon="i-lucide-list"
+          block
+          class="justify-center"
+          @click="showCreate = false"
+        />
       </form>
     </UCard>
 
-    <div
-      v-if="loading"
-      class="py-10 text-center opacity-70"
-    >
-      Loading…
-    </div>
-    <div
-      v-else-if="!sessions.length"
-      class="py-10 text-center opacity-70"
-    >
-      No sessions yet.
-    </div>
-    <div
-      v-else
-      class="grid gap-3"
-    >
-      <UCard
-        v-for="session in sessions"
-        :key="session.id"
-        class="profile-hero-card"
+    <template v-else>
+      <div
+        v-if="loading"
+        class="py-10 text-center opacity-70"
       >
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <div class="flex items-center gap-2">
-              <strong class="text-lg">{{ session.title }}</strong>
-              <UBadge
-                :color="session.status === 'active' ? 'success' : 'neutral'"
+        Loading…
+      </div>
+      <div
+        v-else-if="!sessions.length"
+        class="py-10 text-center opacity-70"
+      >
+        No sessions yet.
+      </div>
+      <div
+        v-else
+        class="grid gap-3"
+      >
+        <UCard
+          v-for="session in sessions"
+          :key="session.id"
+          class="profile-hero-card"
+        >
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <strong class="text-lg">{{ session.title }}</strong>
+                <UBadge
+                  :color="session.status === 'active' ? 'success' : 'neutral'"
+                  variant="soft"
+                >
+                  {{ session.status }}
+                </UBadge>
+              </div>
+              <div class="mt-1 text-sm opacity-70">
+                Code <span class="font-mono">{{ session.code }}</span> · {{ session.bid_currency }} · min {{ session.default_min_bid }}
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <UButton
+                color="primary"
                 variant="soft"
-              >
-                {{ session.status }}
-              </UBadge>
-            </div>
-            <div class="mt-1 text-sm opacity-70">
-              Code <span class="font-mono">{{ session.code }}</span> · {{ session.bid_currency }} · min {{ session.default_min_bid }}
+                icon="i-lucide-settings"
+                label="Manage"
+                :to="`/admin/sessions/${session.id}`"
+              />
+              <UButton
+                v-if="session.status === 'active'"
+                color="error"
+                variant="soft"
+                icon="i-lucide-square"
+                label="End"
+                @click="endSession(session.id)"
+              />
             </div>
           </div>
-          <div class="flex gap-2">
-            <UButton
-              color="primary"
-              variant="soft"
-              icon="i-lucide-settings"
-              label="Manage"
-              :to="`/admin/sessions/${session.id}`"
-            />
-            <UButton
-              v-if="session.status === 'active'"
-              color="error"
-              variant="soft"
-              icon="i-lucide-square"
-              label="End"
-              @click="endSession(session.id)"
-            />
-          </div>
-        </div>
-      </UCard>
-    </div>
+        </UCard>
+      </div>
+    </template>
   </main>
 </template>
