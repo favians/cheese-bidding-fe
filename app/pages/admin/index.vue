@@ -3,7 +3,6 @@ import type { CreateSessionRequest } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
-const adminAuth = useAdminAuthStore()
 const sessionsStore = useSessionsStore()
 const catalog = useCatalogStore()
 const { sessions, loading, saving, error } = storeToRefs(sessionsStore)
@@ -71,53 +70,20 @@ async function endSession(id: string) {
     // store exposes error
   }
 }
-
-async function logout() {
-  await adminAuth.logout()
-  await navigateTo('/admin/login')
-}
 </script>
 
 <template>
   <main class="public-shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-head">
-          <span class="brand-logo">🧀 Cheese GDKP</span>
-        </div>
-        <h1>Sessions</h1>
-        <p>{{ adminAuth.profile?.username }} · admin</p>
-      </div>
-      <div class="brand-head">
+    <AdminNav title="Sessions">
+      <template #actions>
         <UButton
           color="primary"
           icon="i-lucide-plus"
           label="New session"
           @click="showCreate = !showCreate"
         />
-        <UButton
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-users"
-          label="Players"
-          to="/admin/players"
-        />
-        <UButton
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-banknote"
-          label="Money"
-          to="/admin/money"
-        />
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-log-out"
-          label="Logout"
-          @click="logout"
-        />
-      </div>
-    </header>
+      </template>
+    </AdminNav>
 
     <UAlert
       v-if="error"

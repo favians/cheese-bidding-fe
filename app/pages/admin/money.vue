@@ -51,22 +51,10 @@ async function moveWithdrawal(id: string, status: WithdrawalStatus) {
 
 <template>
   <main class="public-shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-head">
-          <span class="brand-logo">🧀 Cheese GDKP</span>
-        </div>
-        <h1>Money</h1>
-        <p>Payouts, withdrawals & settings</p>
-      </div>
-      <UButton
-        color="neutral"
-        variant="ghost"
-        icon="i-lucide-arrow-left"
-        label="Sessions"
-        to="/admin"
-      />
-    </header>
+    <AdminNav
+      title="Money"
+      subtitle="Payouts, withdrawals & settings"
+    />
 
     <UAlert
       v-if="error"

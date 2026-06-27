@@ -168,30 +168,19 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
 
 <template>
   <main class="public-shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-head">
-          <span class="brand-logo">🧀 Cheese GDKP</span>
-        </div>
-        <h1>Players</h1>
-        <p>Onboard & manage player accounts</p>
-      </div>
-      <div class="brand-head">
+    <AdminNav
+      title="Players"
+      subtitle="Onboard & manage player accounts"
+    >
+      <template #actions>
         <UButton
           color="primary"
           icon="i-lucide-user-plus"
           label="New player"
           @click="showCreate = !showCreate"
         />
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-arrow-left"
-          label="Sessions"
-          to="/admin"
-        />
-      </div>
-    </header>
+      </template>
+    </AdminNav>
 
     <UAlert
       v-if="error"
