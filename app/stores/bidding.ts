@@ -8,6 +8,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   const loading = ref(false)
   const bidding = ref(false)
   const error = ref('')
+  const sessionUnavailable = ref<{ reason: 'deleted', message: string } | null>(null)
 
   // most recent moment the caller lost a top bid (page watches this for a toast)
   const lastOutbid = ref<{ name: string, ts: number } | null>(null)
@@ -50,6 +51,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     const { request } = useApi()
     loading.value = true
     error.value = ''
+    sessionUnavailable.value = null
     try {
       const [auctionRows, prebidRows] = await Promise.all([
         request<Auction[]>(`/api/v1/client/auctions?session_id=${encodeURIComponent(sessionId)}`),
@@ -112,20 +114,31 @@ export const useBiddingStore = defineStore('bidding', () => {
     const onAuction = (e: Event) => patchAuction(JSON.parse((e as MessageEvent).data) as Auction)
     const onPrebid = (e: Event) => patchPrebid(JSON.parse((e as MessageEvent).data) as Prebid)
     const onSessionChanged = () => {
-      void load(sessionId)
+      void load(sessionId).catch(() => undefined)
+    }
+    const onSessionDeleted = () => {
+      markSessionUnavailable('deleted', 'This session was deleted by admin.')
     }
     es.addEventListener('auction.created', onAuction)
     es.addEventListener('auction.updated', onAuction)
     es.addEventListener('prebid.created', onPrebid)
     es.addEventListener('prebid.updated', onPrebid)
     es.addEventListener('session.updated', onSessionChanged)
-    es.addEventListener('session.deleted', onSessionChanged)
+    es.addEventListener('session.deleted', onSessionDeleted)
     source.value = es
   }
 
   function disconnect() {
     source.value?.close()
     source.value = null
+  }
+
+  function markSessionUnavailable(reason: 'deleted', message: string) {
+    auctions.value = []
+    prebids.value = []
+    error.value = ''
+    sessionUnavailable.value = { reason, message }
+    disconnect()
   }
 
   // patch in place so the list does not flicker/refetch on every bid
@@ -172,6 +185,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     openPrebids,
     closedAuctions,
     lastOutbid,
+    sessionUnavailable,
     myMember,
     members,
     isMine,

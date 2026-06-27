@@ -6,7 +6,7 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const bidding = useBiddingStore()
-const { activeAuctions, openPrebids, closedAuctions, lastOutbid, loading, bidding: submitting, error } = storeToRefs(bidding)
+const { activeAuctions, openPrebids, closedAuctions, lastOutbid, sessionUnavailable, loading, bidding: submitting, error } = storeToRefs(bidding)
 
 const toast = useToast()
 watch(lastOutbid, (v) => {
@@ -96,7 +96,27 @@ function canCustomBid(item: Auction | Prebid) {
     </header>
 
     <UAlert
-      v-if="error"
+      v-if="sessionUnavailable"
+      color="warning"
+      variant="soft"
+      icon="i-lucide-circle-alert"
+      title="Session unavailable"
+      :description="sessionUnavailable.message"
+      class="mb-4"
+    >
+      <template #actions>
+        <UButton
+          color="warning"
+          variant="solid"
+          icon="i-lucide-arrow-left"
+          label="Back to join"
+          to="/play"
+        />
+      </template>
+    </UAlert>
+
+    <UAlert
+      v-else-if="error"
       color="error"
       variant="soft"
       icon="i-lucide-circle-alert"

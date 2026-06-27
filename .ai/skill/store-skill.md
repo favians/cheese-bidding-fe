@@ -118,7 +118,7 @@ Live updates arrive over SSE and **patch state in place** — never refetch the 
 - `connect(sessionId)`: open `new EventSource('/api/v1/client/events?session_id=' + id)` (same-origin → Nitro attaches the player token). `addEventListener('auction.updated' | 'auction.created' | 'prebid.*', e => patch(JSON.parse(e.data)))`.
 - `disconnect()`: `source?.close()`; call it in the page's `onBeforeUnmount`.
 - patch helpers replace the matching item by id in the ref array (`findIndex` → assign), or unshift if new. A locally-placed bid uses the **same** patch path (the POST returns the updated entity), so the bidder's own action and others' SSE updates converge with no flicker.
-- the page connects on mount, drops any poll, and keeps one targeted refetch when an auction timer elapses (the scheduler's bulk close doesn't emit SSE).
+- the page connects on mount and drops polling/timer refetch. Backend scheduler bulk close emits `auction.updated`, so timer closes arrive through the same patch path.
 - derive transitions in the patch (e.g. "I held the top bid and an update took it" → set an `outbid` ref the page watches for a toast).
 
 Rules:
