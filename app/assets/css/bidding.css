@@ -49,6 +49,58 @@
   text-transform: uppercase;
 }
 
+.player-table-tabs {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.player-table-tabs button {
+  position: relative;
+  min-height: 0;
+  border: 1px solid rgba(var(--cb-theme-hot-rgb), 0.18);
+  border-bottom: 2px solid transparent;
+  border-radius: 7px 7px 0 0;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: none;
+  color: rgba(255, 247, 237, 0.62);
+  font-size: 1.02rem;
+  font-weight: 900;
+  padding: 7px 12px 8px;
+  text-shadow: none;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.player-table-tabs button::before,
+.player-table-tabs button::after {
+  display: none;
+}
+
+.player-table-tabs button.active {
+  border-color: rgb(var(--cb-theme-hot-rgb));
+  background: rgba(var(--cb-theme-rgb), 0.18);
+  box-shadow: 0 0 16px rgba(var(--cb-theme-rgb), 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #fff7ed;
+}
+
+.player-table-tabs button.has-items:not(.active) {
+  animation: tab-pulse-glow 1.15s ease-in-out infinite alternate;
+}
+
+.player-table-tabs button:hover,
+.player-table-tabs button:focus-visible {
+  border-color: rgba(var(--cb-theme-hot-rgb), 0.5);
+  background: rgba(var(--cb-theme-rgb), 0.16);
+  color: #fff7ed;
+  outline: none;
+}
+
+.player-table-tabs span {
+  margin-left: 5px;
+  color: rgb(var(--cb-theme-hot-rgb));
+  font-size: 0.78rem;
+}
+
 .player-empty {
   padding: 34px 18px;
   color: rgba(255, 247, 237, 0.62);
@@ -300,6 +352,17 @@
   }
 }
 
+@keyframes tab-pulse-glow {
+  from {
+    border-color: rgba(var(--cb-theme-hot-rgb), 0.24);
+    box-shadow: 0 0 0 rgba(var(--cb-theme-rgb), 0), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  to {
+    border-color: rgba(var(--cb-theme-hot-rgb), 0.72);
+    box-shadow: 0 0 18px rgba(var(--cb-theme-rgb), 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.13);
+  }
+}
+
 @media (max-width: 1180px) {
   .auction-card,
   .auction-card.prebid-card {
@@ -316,6 +379,12 @@
   .result-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .player-table-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .bid-controls,

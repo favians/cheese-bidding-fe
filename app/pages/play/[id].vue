@@ -3,6 +3,8 @@ import type { Auction, Prebid } from '#shared/types/api'
 
 definePageMeta({ middleware: 'auth' })
 
+type PlayerTab = 'bid' | 'prebid'
+
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const bidding = useBiddingStore()
@@ -16,6 +18,7 @@ watch(lastOutbid, (v) => {
 })
 
 const bidInputs = reactive<Record<string, number | undefined>>({})
+const playerTab = ref<PlayerTab>('bid')
 
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
@@ -136,196 +139,217 @@ function canCustomBid(item: Auction | Prebid) {
 
     <section class="player-board">
       <div class="player-board-head">
-        <h2>Live Auctions</h2>
-        <span>{{ activeAuctions.length }} live</span>
+        <div
+          class="player-table-tabs"
+          role="tablist"
+          aria-label="Live bidding view"
+        >
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="playerTab === 'bid'"
+            :class="{ 'active': playerTab === 'bid', 'has-items': activeAuctions.length > 0 }"
+            @click="playerTab = 'bid'"
+          >
+            Bid <span>{{ activeAuctions.length }}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="playerTab === 'prebid'"
+            :class="{ 'active': playerTab === 'prebid', 'has-items': openPrebids.length > 0 }"
+            @click="playerTab = 'prebid'"
+          >
+            Prebid <span>{{ openPrebids.length }}</span>
+          </button>
+        </div>
+        <span v-if="playerTab === 'prebid'">{{ openPrebids.length }} open</span>
+        <span v-else>{{ activeAuctions.length }} live</span>
       </div>
       <div
-        v-if="loading && !activeAuctions.length"
+        v-if="loading && !activeAuctions.length && !openPrebids.length"
         class="player-empty"
       >
         Loading…
       </div>
-      <div
-        v-else-if="!activeAuctions.length"
-        class="player-empty"
-      >
-        No live auctions right now.
-      </div>
-      <div
-        v-else
-        class="player-card-list"
-      >
-        <article
-          v-for="item in activeAuctions"
-          :key="item.id"
-          class="auction-card"
-          :class="{ winning: bidding.isMine(item.current_winner_member_id) }"
+      <template v-else-if="playerTab === 'bid'">
+        <div
+          v-if="!activeAuctions.length"
+          class="player-empty"
         >
-          <div class="loot-cell">
-            <div class="item-icon">
-              <img
-                v-if="item.item_id"
-                :src="`/icons/${item.item_id}.jpg`"
-                alt=""
-              >
-              <span v-else>?</span>
-            </div>
-            <div class="loot-text">
-              <div class="item-name">
-                <span class="item-name-main">{{ item.item_name }}</span>
-                <span
-                  v-if="bidding.isMine(item.current_winner_member_id)"
-                  class="bid-you-pill"
-                >
-                  Winning
-                </span>
-              </div>
-              <div class="loot-sub">
-                Min {{ item.min_bid }} · Inc {{ item.bid_increment }} · {{ item.bid_count }} bids
-              </div>
-            </div>
-          </div>
-
-          <div class="bid-state">
-            <div class="bid-main">
-              Bid <strong>{{ item.current_bid || '—' }}</strong>
-            </div>
-            <div class="bid-by">
-              <span v-if="item.current_winner_member_id">
-                by <span :class="{ 'bid-you': bidding.isMine(item.current_winner_member_id) }">{{ bidding.memberName(item.current_winner_member_id) }}</span>
-              </span>
-              <span v-else>No bids yet</span>
-            </div>
-          </div>
-
-          <div class="timer-cell">
-            <span class="status active">active</span>
-            <strong :class="{ danger: secondsLeft(item.ends_at) <= 10 }">{{ countdown(item.ends_at) }}</strong>
-          </div>
-
-          <div class="bid-controls">
-            <UButton
-              class="min-button"
-              color="primary"
-              icon="i-lucide-gavel"
-              label="Min"
-              :loading="submitting"
-              @click="bidAuction(item, item.next_min_bid)"
-            />
-            <label class="bid-input">
-              <span>Your Bid</span>
-              <UInput
-                v-model.number="bidInputs[item.id]"
-                type="number"
-                :min="item.next_min_bid"
-                :placeholder="String(item.next_min_bid)"
-              />
-            </label>
-            <UButton
-              color="neutral"
-              variant="solid"
-              label="Bid"
-              :loading="submitting"
-              :disabled="!canCustomBid(item)"
-              @click="bidAuction(item, bidInputs[item.id] ?? item.next_min_bid)"
-            />
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section class="player-board">
-      <div class="player-board-head">
-        <h2>Prebids</h2>
-        <span>{{ openPrebids.length }} open</span>
-      </div>
-      <div
-        v-if="!openPrebids.length"
-        class="player-empty"
-      >
-        No open prebids.
-      </div>
-      <div
-        v-else
-        class="player-card-list"
-      >
-        <article
-          v-for="item in openPrebids"
-          :key="item.id"
-          class="auction-card prebid-card"
-          :class="{ winning: bidding.isMine(item.current_winner_member_id) }"
+          No live auctions right now.
+        </div>
+        <div
+          v-else
+          class="player-card-list"
         >
-          <div class="loot-cell">
-            <div class="item-icon">
-              <img
-                v-if="item.item_id"
-                :src="`/icons/${item.item_id}.jpg`"
-                alt=""
-              >
-              <span v-else>?</span>
-            </div>
-            <div class="loot-text">
-              <div class="item-name">
-                <span class="item-name-main">{{ item.item_name }}</span>
-                <span
-                  v-if="bidding.isMine(item.current_winner_member_id)"
-                  class="bid-you-pill"
+          <article
+            v-for="item in activeAuctions"
+            :key="item.id"
+            class="auction-card"
+            :class="{ winning: bidding.isMine(item.current_winner_member_id) }"
+          >
+            <div class="loot-cell">
+              <div class="item-icon">
+                <img
+                  v-if="item.item_id"
+                  :src="`/icons/${item.item_id}.jpg`"
+                  alt=""
                 >
-                  Leading
+                <span v-else>?</span>
+              </div>
+              <div class="loot-text">
+                <div class="item-name">
+                  <span class="item-name-main">{{ item.item_name }}</span>
+                  <span
+                    v-if="bidding.isMine(item.current_winner_member_id)"
+                    class="bid-you-pill"
+                  >
+                    Winning
+                  </span>
+                </div>
+                <div class="loot-sub">
+                  Min {{ item.min_bid }} · Inc {{ item.bid_increment }} · {{ item.bid_count }} bids
+                </div>
+              </div>
+            </div>
+
+            <div class="bid-state">
+              <div class="bid-main">
+                Bid <strong>{{ item.current_bid || '—' }}</strong>
+              </div>
+              <div class="bid-by">
+                <span v-if="item.current_winner_member_id">
+                  by <span :class="{ 'bid-you': bidding.isMine(item.current_winner_member_id) }">{{ bidding.memberName(item.current_winner_member_id) }}</span>
                 </span>
-              </div>
-              <div class="loot-sub">
-                Prebid · Inc {{ item.bid_increment }} · {{ item.bid_count }} bids
+                <span v-else>No bids yet</span>
               </div>
             </div>
-          </div>
 
-          <div class="bid-state">
-            <div class="bid-main">
-              Prebid <strong>{{ item.current_bid || '—' }}</strong>
+            <div class="timer-cell">
+              <span class="status active">active</span>
+              <strong :class="{ danger: secondsLeft(item.ends_at) <= 10 }">{{ countdown(item.ends_at) }}</strong>
             </div>
-            <div class="bid-by">
-              <span v-if="item.current_winner_member_id">
-                by <span :class="{ 'bid-you': bidding.isMine(item.current_winner_member_id) }">{{ bidding.memberName(item.current_winner_member_id) }}</span>
-              </span>
-              <span v-else>No prebids yet</span>
-            </div>
-          </div>
 
-          <div class="timer-cell">
-            <span class="status open">open</span>
-            <strong>No timer</strong>
-          </div>
-
-          <div class="bid-controls prebid-controls">
-            <UButton
-              class="min-button"
-              color="primary"
-              icon="i-lucide-gavel"
-              label="Min"
-              :loading="submitting"
-              @click="bidPrebid(item, item.next_min_bid)"
-            />
-            <label class="bid-input">
-              <span>Your Prebid</span>
-              <UInput
-                v-model.number="bidInputs[item.id]"
-                type="number"
-                :min="item.next_min_bid"
-                :placeholder="String(item.next_min_bid)"
+            <div class="bid-controls">
+              <UButton
+                class="min-button"
+                color="primary"
+                icon="i-lucide-gavel"
+                label="Min"
+                :loading="submitting"
+                @click="bidAuction(item, item.next_min_bid)"
               />
-            </label>
-            <UButton
-              color="neutral"
-              variant="solid"
-              label="Bid"
-              :loading="submitting"
-              :disabled="!canCustomBid(item)"
-              @click="bidPrebid(item, bidInputs[item.id] ?? item.next_min_bid)"
-            />
-          </div>
-        </article>
-      </div>
+              <label class="bid-input">
+                <span>Your Bid</span>
+                <UInput
+                  v-model.number="bidInputs[item.id]"
+                  type="number"
+                  :min="item.next_min_bid"
+                  :placeholder="String(item.next_min_bid)"
+                />
+              </label>
+              <UButton
+                color="neutral"
+                variant="solid"
+                label="Bid"
+                :loading="submitting"
+                :disabled="!canCustomBid(item)"
+                @click="bidAuction(item, bidInputs[item.id] ?? item.next_min_bid)"
+              />
+            </div>
+          </article>
+        </div>
+      </template>
+      <template v-else>
+        <div
+          v-if="!openPrebids.length"
+          class="player-empty"
+        >
+          No open prebids.
+        </div>
+        <div
+          v-else
+          class="player-card-list"
+        >
+          <article
+            v-for="item in openPrebids"
+            :key="item.id"
+            class="auction-card prebid-card"
+            :class="{ winning: bidding.isMine(item.current_winner_member_id) }"
+          >
+            <div class="loot-cell">
+              <div class="item-icon">
+                <img
+                  v-if="item.item_id"
+                  :src="`/icons/${item.item_id}.jpg`"
+                  alt=""
+                >
+                <span v-else>?</span>
+              </div>
+              <div class="loot-text">
+                <div class="item-name">
+                  <span class="item-name-main">{{ item.item_name }}</span>
+                  <span
+                    v-if="bidding.isMine(item.current_winner_member_id)"
+                    class="bid-you-pill"
+                  >
+                    Leading
+                  </span>
+                </div>
+                <div class="loot-sub">
+                  Prebid · Inc {{ item.bid_increment }} · {{ item.bid_count }} bids
+                </div>
+              </div>
+            </div>
+
+            <div class="bid-state">
+              <div class="bid-main">
+                Prebid <strong>{{ item.current_bid || '—' }}</strong>
+              </div>
+              <div class="bid-by">
+                <span v-if="item.current_winner_member_id">
+                  by <span :class="{ 'bid-you': bidding.isMine(item.current_winner_member_id) }">{{ bidding.memberName(item.current_winner_member_id) }}</span>
+                </span>
+                <span v-else>No prebids yet</span>
+              </div>
+            </div>
+
+            <div class="timer-cell">
+              <span class="status open">open</span>
+              <strong>No timer</strong>
+            </div>
+
+            <div class="bid-controls prebid-controls">
+              <UButton
+                class="min-button"
+                color="primary"
+                icon="i-lucide-gavel"
+                label="Min"
+                :loading="submitting"
+                @click="bidPrebid(item, item.next_min_bid)"
+              />
+              <label class="bid-input">
+                <span>Your Prebid</span>
+                <UInput
+                  v-model.number="bidInputs[item.id]"
+                  type="number"
+                  :min="item.next_min_bid"
+                  :placeholder="String(item.next_min_bid)"
+                />
+              </label>
+              <UButton
+                color="neutral"
+                variant="solid"
+                label="Bid"
+                :loading="submitting"
+                :disabled="!canCustomBid(item)"
+                @click="bidPrebid(item, bidInputs[item.id] ?? item.next_min_bid)"
+              />
+            </div>
+          </article>
+        </div>
+      </template>
     </section>
 
     <section

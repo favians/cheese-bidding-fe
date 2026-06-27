@@ -6,7 +6,7 @@ Greenfield **Nuxt 3 + TypeScript** frontend for CheeseBid, replacing the old van
 
 ### Built so far
 - **Auth**: player login (`/`) + admin login (`/admin/login`), two httpOnly-cookie contexts; the Nitro proxy attaches the admin token for `/api/v1/internal/*`, the player token otherwise.
-- **Player bidding flow** (the core): `/play` join-by-code or `/play?code=<SESSION_CODE>` share link → `/play/[id]` live view. Active auctions + open prebids, one-tap quick-bid + custom amount, "Winning" crown when you lead, self-overbid confirm, mm:ss countdown (red+pulse <10s), outbid toast, Results section. Item icons from `/icons/<item_id>.jpg`.
+- **Player bidding flow** (the core): `/play` join-by-code or `/play?code=<SESSION_CODE>` share link → `/play/[id]` live view. The live board has V1-style tabs: `Bid` for active auctions and `Prebid` for open prebids. One-tap quick-bid + custom amount, "Winning" crown when you lead, self-overbid confirm, mm:ss countdown (red+pulse <10s), outbid toast, Results section. Item icons from `/icons/<item_id>.jpg`.
 - **Realtime (SSE)**: `bidding` store opens an `EventSource` to `/api/v1/client/events?session_id=` and patches auctions/prebids in place on `auction.*`/`prebid.*` events — no polling, no timer refetch. Backend scheduler auto-close emits `auction.updated`.
 - **Session end compatibility**: FE listens to both V2 `session.updated` and V1-compatible `session.ended`; both trigger one bidding-state refetch.
 - **Session ended UX**: `session.ended` keeps the final state visible and shows a clear "Session ended" banner above results.
