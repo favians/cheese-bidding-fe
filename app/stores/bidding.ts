@@ -9,6 +9,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   const bidding = ref(false)
   const error = ref('')
   const sessionUnavailable = ref<{ reason: 'deleted', message: string } | null>(null)
+  const sessionEnded = ref(false)
 
   // most recent moment the caller lost a top bid (page watches this for a toast)
   const lastOutbid = ref<{ name: string, ts: number } | null>(null)
@@ -47,11 +48,12 @@ export const useBiddingStore = defineStore('bidding', () => {
     return members.value.find(m => m.id === memberId)?.character_name ?? 'Unknown'
   }
 
-  async function load(sessionId: string) {
+  async function load(sessionId: string, options: { keepEnded?: boolean } = {}) {
     const { request } = useApi()
     loading.value = true
     error.value = ''
     sessionUnavailable.value = null
+    if (!options.keepEnded) sessionEnded.value = false
     try {
       const [auctionRows, prebidRows] = await Promise.all([
         request<Auction[]>(`/api/v1/client/auctions?session_id=${encodeURIComponent(sessionId)}`),
@@ -116,6 +118,10 @@ export const useBiddingStore = defineStore('bidding', () => {
     const onSessionChanged = () => {
       void load(sessionId).catch(() => undefined)
     }
+    const onSessionEnded = () => {
+      sessionEnded.value = true
+      void load(sessionId, { keepEnded: true }).catch(() => undefined)
+    }
     const onSessionDeleted = () => {
       markSessionUnavailable('deleted', 'This session was deleted by admin.')
     }
@@ -124,7 +130,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     es.addEventListener('prebid.created', onPrebid)
     es.addEventListener('prebid.updated', onPrebid)
     es.addEventListener('session.updated', onSessionChanged)
-    es.addEventListener('session.ended', onSessionChanged)
+    es.addEventListener('session.ended', onSessionEnded)
     es.addEventListener('session.deleted', onSessionDeleted)
     source.value = es
   }
@@ -138,6 +144,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     auctions.value = []
     prebids.value = []
     error.value = ''
+    sessionEnded.value = false
     sessionUnavailable.value = { reason, message }
     disconnect()
   }
@@ -187,6 +194,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     closedAuctions,
     lastOutbid,
     sessionUnavailable,
+    sessionEnded,
     myMember,
     members,
     isMine,

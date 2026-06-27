@@ -6,7 +6,7 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const bidding = useBiddingStore()
-const { activeAuctions, openPrebids, closedAuctions, lastOutbid, sessionUnavailable, loading, bidding: submitting, error } = storeToRefs(bidding)
+const { activeAuctions, openPrebids, closedAuctions, lastOutbid, sessionUnavailable, sessionEnded, loading, bidding: submitting, error } = storeToRefs(bidding)
 
 const toast = useToast()
 watch(lastOutbid, (v) => {
@@ -121,6 +121,16 @@ function canCustomBid(item: Auction | Prebid) {
       variant="soft"
       icon="i-lucide-circle-alert"
       :title="error"
+      class="mb-4"
+    />
+
+    <UAlert
+      v-if="sessionEnded"
+      color="success"
+      variant="soft"
+      icon="i-lucide-flag"
+      title="Session ended"
+      description="Bidding is closed. Final results are shown below."
       class="mb-4"
     />
 
