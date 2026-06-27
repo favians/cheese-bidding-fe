@@ -1,11 +1,17 @@
 <script setup lang="ts">
 const auth = useAuthStore()
+const route = useRoute()
 const username = ref('')
 const password = ref('')
 
+const redirectPath = computed(() => {
+  const value = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+  return value.startsWith('/') && !value.startsWith('//') ? value : '/profile'
+})
+
 await auth.bootstrap()
 if (auth.isAuthenticated) {
-  await navigateTo('/profile')
+  await navigateTo(redirectPath.value)
 }
 
 async function submitLogin() {
@@ -15,7 +21,7 @@ async function submitLogin() {
   }
   try {
     await auth.login(username.value, password.value)
-    await navigateTo('/profile')
+    await navigateTo(redirectPath.value)
   } catch {
     // Store exposes safe error message.
   }

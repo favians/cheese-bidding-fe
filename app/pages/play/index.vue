@@ -2,6 +2,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const play = usePlayStore()
+const route = useRoute()
 const code = ref('')
 
 async function submit() {
@@ -16,6 +17,13 @@ async function submit() {
     // store exposes a safe error message
   }
 }
+
+onMounted(() => {
+  const queryCode = typeof route.query.code === 'string' ? route.query.code.trim() : ''
+  if (!queryCode) return
+  code.value = queryCode.toUpperCase()
+  submit()
+})
 </script>
 
 <template>

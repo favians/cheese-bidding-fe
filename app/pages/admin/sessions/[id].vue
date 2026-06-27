@@ -43,8 +43,10 @@ const boardRows = computed(() => {
   return activeAuctions.value
 })
 const joinURL = computed(() => {
-  if (!import.meta.client) return ''
-  return `${window.location.origin}/play`
+  if (!import.meta.client || !session.value?.code) return ''
+  const url = new URL('/play', window.location.origin)
+  url.searchParams.set('code', session.value.code)
+  return url.toString()
 })
 
 onMounted(() => {
@@ -123,7 +125,7 @@ async function saveInstances() {
 
 async function copyJoin() {
   if (!import.meta.client || !session.value) return
-  await navigator.clipboard.writeText(`${joinURL.value}\nCode: ${session.value.code}`)
+  await navigator.clipboard.writeText(joinURL.value)
 }
 
 function resetAuctionForm() {
