@@ -183,3 +183,79 @@ export interface Item {
   boss_name: string
   icon_path: string
 }
+
+// --- money (amounts are decimal strings from the backend) ---
+
+export interface Balance {
+  client_id: number
+  balance_amount: string
+}
+
+export interface LedgerEntry {
+  id: string
+  source: string
+  type: string
+  amount: string
+  balance_after: string
+  note: string
+  session_snapshot: string
+  created_at: string
+}
+
+export type IncomingStatus = 'pending' | 'confirmed' | 'cancelled'
+export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'paid'
+
+export interface IncomingBalance {
+  id: string
+  client_id: number
+  week_id: string
+  amount: string
+  status: IncomingStatus
+  note: string
+  created_at: string
+  confirmed_at: string | null
+  cancelled_at: string | null
+}
+
+export interface Withdrawal {
+  id: string
+  client_id: number
+  amount: string
+  payment_method: string
+  original_amount: string
+  original_currency: string
+  conversion_rate: string
+  status: WithdrawalStatus
+  note: string
+  admin_note: string
+  created_at: string
+  paid_at: string | null
+}
+
+export interface WithdrawalConfig {
+  maintenance_mode: boolean
+  gold_to_dollar_rate: string
+}
+
+export interface CreateWithdrawalRequest {
+  amount: number
+  payment_method: string
+  note?: string
+}
+
+export interface CreateIncomingRequest {
+  client_id: number
+  week_id?: string
+  amount: number
+  note?: string
+}
+
+export interface UpdateWithdrawalStatusRequest {
+  status: WithdrawalStatus
+  admin_note?: string
+}
+
+export interface SettingResponse {
+  key: string
+  value: string
+}

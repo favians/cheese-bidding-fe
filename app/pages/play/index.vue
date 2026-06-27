@@ -28,6 +28,13 @@ async function submit() {
         <h1>Join Session</h1>
         <p>Enter the code your raid leader shared</p>
       </div>
+      <UButton
+        color="neutral"
+        variant="ghost"
+        icon="i-lucide-wallet"
+        label="Wallet"
+        to="/wallet"
+      />
     </header>
 
     <section class="public-login-layout">
