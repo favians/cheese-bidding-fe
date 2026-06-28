@@ -12,14 +12,30 @@ Greenfield **Nuxt 3 + TypeScript** frontend for CheeseBid, replacing the old van
 - **Session ended UX**: `session.ended` keeps the final state visible and shows a clear "Session ended" banner above results.
 - **Session deletion UX**: `session.deleted` closes SSE, clears live rows, and shows a "Session unavailable" state with a back-to-join action.
 - **Live bidding V1 UI parity**: `/play/[id]` uses V1-like auction/prebid rows (`auction-card`, `loot-cell`, `item-icon`, `bid-state`, `timer-cell`, `bid-controls`) and the global cheese watermark is scoped to login/join pages only, so live/session pages keep the darker raid-board look.
-- **Admin**: modern shared admin navbar (`AdminNav`) across sessions, players, money, and session detail; session list/create (`/admin`) now uses reusable `AdminDataTable` with row-click navigation, icon-only tooltip actions, copy-join, and `New session` in the table header instead of the navbar. New session title is prebuilt from default raid date (`today - 1`), faction (`🔵 Alliance` / `🔴 Horde`), and selected instance names; faction is not stored separately. Session control panel (`/admin/sessions/[id]`) has session-instance assignment and copy-join as a single pasteable `/play?code=<SESSION_CODE>` URL — open auctions/prebids via the catalog **ItemPicker**, close/reset/cancel, resolve/cancel prebids, 2s refresh (admin isn't a session member so can't use the client SSE). Admin players (`/admin/players`) has search, active/inactive filter, pagination, favorite/active toggles, Discord edit, password reset reveal, expandable character management, and balance detail drilldown. Admin money (`/admin/money`) exists.
+- **Admin**: modern shared admin navbar (`AdminNav`) across sessions, players, money, and session detail; session list/create (`/admin`) now uses reusable `AdminDataTable` with row-click navigation, icon-only tooltip actions, copy-join, and `New session` in the table header instead of the navbar. New session title is prebuilt from default raid date (`today - 1`), faction (`🔵 Alliance` / `🔴 Horde`), and selected instance names; faction is not stored separately. Session control panel (`/admin/sessions/[id]`) has session-instance assignment and copy-join as a single pasteable `/play?code=<SESSION_CODE>` URL — open auctions/prebids via the catalog **ItemPicker**, close/reset/cancel, resolve/cancel prebids, 2s refresh (admin isn't a session member so can't use the client SSE). Admin players (`/admin/players`) now uses reusable `AdminDataTable` with search, active/inactive filter, pagination, favorite/active toggles, Discord edit, password reset reveal, icon-only tooltip actions, expandable character management, and balance detail drilldown. Admin money (`/admin/money`) exists.
 - **Wallet settlement UX**: winner auction settlement is backend-driven; wallet ledger labels `auction_win` as `Auction win` and displays the debit note (`auction win: <item>`). Amount strings stay exact and debit/credit coloring remains type-based.
 - **Catalog is id-based, no slug**: `Instance` has `id`; `Item` has `id` + `wow_item_id` + `instance_id`; the picker filters by `instance_id`. Icons keyed by `wow_item_id`.
 
 ### Remaining
-- admin players V1 parity polish: deeper V1-like styling. Status filter, pagination, password reset flow, character management, and balance detail drilldown are in place.
-- session/bidding hardening: broader edge-case tests for ended/deleted/session lifecycle flows and refund UX once BE reset/cancel settlement rules are chosen.
-- profile/character polish and V1 SQLite → Postgres migration support.
+- auction settlement reversal/refund UX is implemented: wallet shows `Auction refund`; admin closed auction rows expose `Reset + refund` / `Cancel + refund` confirmations.
+- profile/character self-management polish.
+- withdrawals, incoming balances, admin money dashboard, finished/session result export, V1 data migration, and legacy cleanup.
+
+### Remaining 7 modules / workstreams
+
+Detailed FE checklist lives in `.ai/roadmap-7-modules.md`.
+
+1. **Player profile + character self-management** — V1-like profile, password/change-profile UX, character CRUD polish, class/spec visuals.
+2. **Withdrawals full flow** — player request UX, admin review table, approve/reject/paid states, maintenance setting feedback.
+3. **Incoming balances / payout credits** — admin payout queue table, confirm/cancel UX, optional CheesePayout ingest UI/docs.
+4. **Admin money dashboard** — reuse `AdminDataTable` for ledger/incoming/withdrawals/settings, filters/search, gold-rate setting.
+5. **Finished/session results export** — final winners, totals, payout estimate, copy/export flow, V1 finished helpers parity.
+6. **V1 SQLite → V2 Postgres migration support** — import status UI/docs if needed; FE mainly validates migrated records display correctly.
+7. **Legacy cleanup + production hardening** — remove stale UI hooks, finish error/empty states, verify build/deploy/runtime docs.
+
+Latest pushed restore points before this docs update:
+- BE `main`: `848b957 feat: settle auction wins to wallet`
+- FE `main`: `f9570ba feat: improve admin player tables`
 
 ## Stack (locked)
 

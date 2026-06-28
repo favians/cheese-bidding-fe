@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { CreateWithdrawalRequest, WithdrawalStatus } from '#shared/types/api'
-import type { LedgerEntry } from '#shared/types/api'
+import type { CreateWithdrawalRequest, WithdrawalStatus, LedgerEntry } from '#shared/types/api'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -22,6 +21,7 @@ const statusColor: Record<WithdrawalStatus, 'warning' | 'info' | 'error' | 'succ
 
 function ledgerSourceLabel(entry: LedgerEntry) {
   if (entry.source === 'auction_win') return 'Auction win'
+  if (entry.source === 'auction_refund') return 'Auction refund'
   if (entry.source === 'incoming_balance') return 'Payout'
   if (entry.source === 'withdrawal') return 'Withdrawal'
   if (entry.source === 'withdrawal_refund') return 'Withdrawal refund'

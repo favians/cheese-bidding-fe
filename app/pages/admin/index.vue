@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CreateSessionRequest } from '#shared/types/api'
+import type { CreateSessionRequest, Session } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
@@ -102,7 +102,7 @@ function formatDateTime(value: string) {
   }).format(new Date(value))
 }
 
-function sessionSubtitle(row: Record<string, any>) {
+function sessionSubtitle(row: Session) {
   return [
     row.code,
     formatDateTime(row.created_at),
@@ -110,15 +110,15 @@ function sessionSubtitle(row: Record<string, any>) {
   ].join(' · ')
 }
 
-function sessionRowKey(row: Record<string, any>) {
+function sessionRowKey(row: Session) {
   return row.id
 }
 
-async function openSession(row: Record<string, any>) {
+async function openSession(row: Session) {
   await navigateTo(`/admin/sessions/${row.id}`)
 }
 
-async function copySession(row: Record<string, any>) {
+async function copySession(row: Session) {
   if (!import.meta.client || !row.code) {
     return
   }

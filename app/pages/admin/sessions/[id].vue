@@ -171,6 +171,27 @@ async function submitPrebid() {
     // store exposes error
   }
 }
+
+function auctionActionMessage(item: Auction, action: 'close' | 'cancel' | 'reset') {
+  if (item.status === 'closed' && item.winning_bid > 0 && (action === 'cancel' || action === 'reset')) {
+    const verb = action === 'cancel' ? 'cancel this closed auction' : 'reset this closed auction'
+    return `This will ${verb} and refund ${item.winning_bid} to ${memberName(item.winner_member_id)}. Continue?`
+  }
+  if (action === 'reset') {
+    return `Reset bids for ${item.item_name}? Current bid history will be cleared.`
+  }
+  if (action === 'cancel') {
+    return `Cancel auction for ${item.item_name}?`
+  }
+  return `Close auction for ${item.item_name}? Winner will be charged when there is a winning bid.`
+}
+
+async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'reset') {
+  if (import.meta.client && !window.confirm(auctionActionMessage(item, action))) {
+    return
+  }
+  await store.auctionAction(item.id, action)
+}
 </script>
 
 <template>
@@ -512,7 +533,7 @@ async function submitPrebid() {
                 variant="soft"
                 icon="i-lucide-check"
                 label="Close"
-                @click="store.auctionAction(item.id, 'close')"
+                @click="runAuctionAction(item, 'close')"
               />
               <UButton
                 size="xs"
@@ -520,7 +541,7 @@ async function submitPrebid() {
                 variant="soft"
                 icon="i-lucide-rotate-ccw"
                 label="Reset"
-                @click="store.auctionAction(item.id, 'reset')"
+                @click="runAuctionAction(item, 'reset')"
               />
               <UButton
                 size="xs"
@@ -528,7 +549,7 @@ async function submitPrebid() {
                 variant="soft"
                 icon="i-lucide-x"
                 label="Cancel"
-                @click="store.auctionAction(item.id, 'cancel')"
+                @click="runAuctionAction(item, 'cancel')"
               />
             </div>
             <div
@@ -558,6 +579,27 @@ async function submitPrebid() {
             >
               <span v-if="'winning_bid' in item && item.winning_bid">Sold {{ item.winning_bid }}</span>
               <span v-else>{{ item.status }}</span>
+              <div
+                v-if="item.status === 'closed'"
+                class="session-card-result-actions"
+              >
+                <UButton
+                  size="xs"
+                  color="warning"
+                  variant="soft"
+                  icon="i-lucide-rotate-ccw"
+                  label="Reset + refund"
+                  @click="runAuctionAction(item, 'reset')"
+                />
+                <UButton
+                  size="xs"
+                  color="error"
+                  variant="soft"
+                  icon="i-lucide-x"
+                  label="Cancel + refund"
+                  @click="runAuctionAction(item, 'cancel')"
+                />
+              </div>
             </div>
           </article>
         </div>

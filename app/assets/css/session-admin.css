@@ -680,6 +680,14 @@
   text-transform: uppercase;
 }
 
+.session-card-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  text-transform: none;
+}
+
 .session-resolved-block {
   padding-top: 4px;
 }
@@ -698,6 +706,10 @@
   .session-card-result {
     justify-content: flex-start;
     justify-items: start;
+  }
+
+  .session-card-result-actions {
+    justify-content: flex-start;
   }
 }
 

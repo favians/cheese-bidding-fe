@@ -1,38 +1,36 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends object">
 type TableColumn = {
   key: string
   label: string
 }
 
-type TableRow = Record<string, any>
-
 const props = defineProps<{
   columns: TableColumn[]
-  rows: TableRow[]
-  rowKey: string | ((row: TableRow) => string | number)
+  rows: T[]
+  rowKey: string | ((row: T) => string | number)
   clickableRows?: boolean
   detailRowKeys?: Array<string | number>
 }>()
 
 const emit = defineEmits<{
-  rowClick: [row: TableRow]
+  rowClick: [row: T]
 }>()
 
-function getRowKey(row: TableRow) {
+function getRowKey(row: T) {
   if (typeof props.rowKey === 'function') {
     return props.rowKey(row)
   }
-  return String(row[props.rowKey] ?? '')
+  return String((row as Record<string, unknown>)[props.rowKey] ?? '')
 }
 
-function hasDetailRow(row: TableRow) {
+function hasDetailRow(row: T) {
   if (!props.detailRowKeys) {
     return true
   }
   return props.detailRowKeys.includes(getRowKey(row))
 }
 
-function onRowKeydown(event: KeyboardEvent, row: TableRow) {
+function onRowKeydown(event: KeyboardEvent, row: T) {
   if (!props.clickableRows || (event.key !== 'Enter' && event.key !== ' ')) {
     return
   }
@@ -80,9 +78,9 @@ function onRowKeydown(event: KeyboardEvent, row: TableRow) {
               <slot
                 :name="`cell-${column.key}`"
                 :row="row"
-                :value="row[column.key]"
+                :value="(row as Record<string, unknown>)[column.key]"
               >
-                {{ row[column.key] }}
+                {{ (row as Record<string, unknown>)[column.key] }}
               </slot>
             </td>
           </tr>

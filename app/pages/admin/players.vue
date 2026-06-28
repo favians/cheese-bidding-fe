@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminCreateClientRequest, ClientCharacter, SaveClientCharacterRequest } from '#shared/types/api'
+import type { AdminCreateClientRequest, ClientAdmin, ClientCharacter, SaveClientCharacterRequest } from '#shared/types/api'
 import { wowClasses } from '~/data/wowClasses'
 
 definePageMeta({ middleware: 'admin' })
@@ -56,7 +56,7 @@ const activePlayerDetailKeys = computed(() => {
   return [...keys]
 })
 
-function playerRowKey(row: Record<string, any>) {
+function playerRowKey(row: ClientAdmin) {
   return row.id
 }
 
@@ -451,187 +451,186 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
           v-if="balanceClientId === c.id || expandedClientId === c.id"
           class="admin-data-table-detail"
         >
-
-        <div
-          v-if="balanceClientId === c.id"
-          class="admin-balance-panel"
-        >
-          <div class="admin-balance-summary">
-            <span>
-              Available balance
-              <strong>{{ balanceAmount(c.id) }}</strong>
-            </span>
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="soft"
-              icon="i-lucide-refresh-cw"
-              label="Refresh"
-              @click="store.loadBalanceDetail(c.id)"
-            />
-          </div>
-
-          <div class="admin-balance-grid">
-            <section>
-              <h3>Ledger</h3>
-              <div
-                v-if="!ledgerRows(c.id).length"
-                class="admin-character-empty"
-              >
-                No ledger entries.
-              </div>
-              <div
-                v-for="entry in ledgerRows(c.id)"
-                :key="entry.id"
-                class="admin-balance-row"
-              >
-                <span>
-                  <strong>{{ entry.amount }}</strong>
-                  <small>{{ entry.type }} · {{ entry.source }} · bal {{ entry.balance_after }}</small>
-                </span>
-                <small>{{ entry.note || entry.session_snapshot || '—' }}</small>
-              </div>
-            </section>
-
-            <section>
-              <h3>Incoming</h3>
-              <div
-                v-if="!incomingRows(c.id).length"
-                class="admin-character-empty"
-              >
-                No incoming payouts.
-              </div>
-              <div
-                v-for="row in incomingRows(c.id)"
-                :key="row.id"
-                class="admin-balance-row"
-              >
-                <span>
-                  <strong>{{ row.amount }}</strong>
-                  <small>{{ row.week_id || '—' }} · {{ row.status }}</small>
-                </span>
-              </div>
-            </section>
-
-            <section>
-              <h3>Withdrawals</h3>
-              <div
-                v-if="!withdrawalRows(c.id).length"
-                class="admin-character-empty"
-              >
-                No withdrawals.
-              </div>
-              <div
-                v-for="row in withdrawalRows(c.id)"
-                :key="row.id"
-                class="admin-balance-row"
-              >
-                <span>
-                  <strong>{{ row.amount }}</strong>
-                  <small>{{ row.payment_method }} · {{ row.status }}</small>
-                </span>
-              </div>
-            </section>
-          </div>
-        </div>
-
-        <div
-          v-if="expandedClientId === c.id"
-          class="admin-character-panel"
-        >
-          <form
-            class="admin-character-form"
-            @submit.prevent="saveCharacter(c.id)"
+          <div
+            v-if="balanceClientId === c.id"
+            class="admin-balance-panel"
           >
-            <UInput
-              v-model="characterForm.character_name"
-              placeholder="Character"
-            />
-            <UInput
-              v-model="characterForm.server"
-              placeholder="Server"
-            />
-            <USelect
-              v-model="characterForm.class"
-              :items="classItems"
-              placeholder="Class"
-            />
-            <USelect
-              v-model="characterForm.faction"
-              :items="factionItems"
-              placeholder="Faction"
-            />
-            <USelect
-              v-model="characterForm.main_spec"
-              :items="specializationItems"
-              :disabled="!characterForm.class"
-              placeholder="Main spec"
-            />
-            <UInput
-              v-model="characterForm.off_spec"
-              placeholder="Off spec"
-            />
-            <div class="admin-character-actions">
+            <div class="admin-balance-summary">
+              <span>
+                Available balance
+                <strong>{{ balanceAmount(c.id) }}</strong>
+              </span>
               <UButton
-                type="submit"
-                size="xs"
-                color="primary"
-                icon="i-lucide-save"
-                :label="editingCharacterId ? 'Save' : 'Add'"
-                :loading="saving"
-              />
-              <UButton
-                v-if="editingCharacterId"
-                type="button"
                 size="xs"
                 color="neutral"
-                variant="ghost"
-                label="Cancel"
-                @click="editingCharacterId = null; resetCharacterForm()"
+                variant="soft"
+                icon="i-lucide-refresh-cw"
+                label="Refresh"
+                @click="store.loadBalanceDetail(c.id)"
               />
             </div>
-          </form>
 
-          <div
-            v-if="!characterRows(c.id).length"
-            class="admin-character-empty"
-          >
-            No characters yet.
-          </div>
-          <div
-            v-else
-            class="admin-character-list"
-          >
-            <div
-              v-for="character in characterRows(c.id)"
-              :key="character.id"
-              class="admin-character-row"
-            >
-              <span>
-                <strong>{{ character.character_name }}</strong>
-                <small>{{ character.class }} · {{ character.main_spec }} · {{ character.faction }}</small>
-              </span>
-              <span class="admin-character-row-actions">
-                <UButton
-                  size="xs"
-                  color="neutral"
-                  variant="soft"
-                  icon="i-lucide-pencil"
-                  label="Edit"
-                  @click="editCharacter(character)"
-                />
-                <UButton
-                  size="xs"
-                  color="error"
-                  variant="soft"
-                  icon="i-lucide-trash-2"
-                  label="Delete"
-                  @click="removeCharacter(c.id, character)"
-                />
-              </span>
+            <div class="admin-balance-grid">
+              <section>
+                <h3>Ledger</h3>
+                <div
+                  v-if="!ledgerRows(c.id).length"
+                  class="admin-character-empty"
+                >
+                  No ledger entries.
+                </div>
+                <div
+                  v-for="entry in ledgerRows(c.id)"
+                  :key="entry.id"
+                  class="admin-balance-row"
+                >
+                  <span>
+                    <strong>{{ entry.amount }}</strong>
+                    <small>{{ entry.type }} · {{ entry.source }} · bal {{ entry.balance_after }}</small>
+                  </span>
+                  <small>{{ entry.note || entry.session_snapshot || '—' }}</small>
+                </div>
+              </section>
+
+              <section>
+                <h3>Incoming</h3>
+                <div
+                  v-if="!incomingRows(c.id).length"
+                  class="admin-character-empty"
+                >
+                  No incoming payouts.
+                </div>
+                <div
+                  v-for="row in incomingRows(c.id)"
+                  :key="row.id"
+                  class="admin-balance-row"
+                >
+                  <span>
+                    <strong>{{ row.amount }}</strong>
+                    <small>{{ row.week_id || '—' }} · {{ row.status }}</small>
+                  </span>
+                </div>
+              </section>
+
+              <section>
+                <h3>Withdrawals</h3>
+                <div
+                  v-if="!withdrawalRows(c.id).length"
+                  class="admin-character-empty"
+                >
+                  No withdrawals.
+                </div>
+                <div
+                  v-for="row in withdrawalRows(c.id)"
+                  :key="row.id"
+                  class="admin-balance-row"
+                >
+                  <span>
+                    <strong>{{ row.amount }}</strong>
+                    <small>{{ row.payment_method }} · {{ row.status }}</small>
+                  </span>
+                </div>
+              </section>
             </div>
           </div>
-        </div>
+
+          <div
+            v-if="expandedClientId === c.id"
+            class="admin-character-panel"
+          >
+            <form
+              class="admin-character-form"
+              @submit.prevent="saveCharacter(c.id)"
+            >
+              <UInput
+                v-model="characterForm.character_name"
+                placeholder="Character"
+              />
+              <UInput
+                v-model="characterForm.server"
+                placeholder="Server"
+              />
+              <USelect
+                v-model="characterForm.class"
+                :items="classItems"
+                placeholder="Class"
+              />
+              <USelect
+                v-model="characterForm.faction"
+                :items="factionItems"
+                placeholder="Faction"
+              />
+              <USelect
+                v-model="characterForm.main_spec"
+                :items="specializationItems"
+                :disabled="!characterForm.class"
+                placeholder="Main spec"
+              />
+              <UInput
+                v-model="characterForm.off_spec"
+                placeholder="Off spec"
+              />
+              <div class="admin-character-actions">
+                <UButton
+                  type="submit"
+                  size="xs"
+                  color="primary"
+                  icon="i-lucide-save"
+                  :label="editingCharacterId ? 'Save' : 'Add'"
+                  :loading="saving"
+                />
+                <UButton
+                  v-if="editingCharacterId"
+                  type="button"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  label="Cancel"
+                  @click="editingCharacterId = null; resetCharacterForm()"
+                />
+              </div>
+            </form>
+
+            <div
+              v-if="!characterRows(c.id).length"
+              class="admin-character-empty"
+            >
+              No characters yet.
+            </div>
+            <div
+              v-else
+              class="admin-character-list"
+            >
+              <div
+                v-for="character in characterRows(c.id)"
+                :key="character.id"
+                class="admin-character-row"
+              >
+                <span>
+                  <strong>{{ character.character_name }}</strong>
+                  <small>{{ character.class }} · {{ character.main_spec }} · {{ character.faction }}</small>
+                </span>
+                <span class="admin-character-row-actions">
+                  <UButton
+                    size="xs"
+                    color="neutral"
+                    variant="soft"
+                    icon="i-lucide-pencil"
+                    label="Edit"
+                    @click="editCharacter(character)"
+                  />
+                  <UButton
+                    size="xs"
+                    color="error"
+                    variant="soft"
+                    icon="i-lucide-trash-2"
+                    label="Delete"
+                    @click="removeCharacter(c.id, character)"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
     </AdminDataTable>
