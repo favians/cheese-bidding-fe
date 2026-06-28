@@ -12,6 +12,14 @@ import type {
 
 type ClientStatusFilter = 'all' | 'active' | 'inactive'
 
+function isNotFoundError(cause: unknown): boolean {
+  return cause instanceof Error
+    && (
+      ('status' in cause && cause.status === 404)
+      || /not found/i.test(cause.message)
+    )
+}
+
 export const useAdminClientsStore = defineStore('admin-clients', () => {
   const clients = ref<ClientAdmin[]>([])
   const charactersByClient = ref<Record<number, ClientCharacter[]>>({})
@@ -108,8 +116,12 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     const { request } = useApi()
     error.value = ''
     try {
-      charactersByClient.value[clientId] = await request<ClientCharacter[]>(`/api/v1/internal/clients/${clientId}/characters`)
+      charactersByClient.value[clientId] = await request<ClientCharacter[]>(`/api/v1/internal/clients/${clientId}/characters`) ?? []
     } catch (cause) {
+      if (isNotFoundError(cause)) {
+        charactersByClient.value[clientId] = []
+        return
+      }
       error.value = cause instanceof Error ? cause.message : 'Could not load characters'
     }
   }

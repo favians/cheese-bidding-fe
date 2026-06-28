@@ -8,6 +8,15 @@ const catalog = useCatalogStore()
 const { sessions, loading, saving, error } = storeToRefs(sessionsStore)
 const { instances } = storeToRefs(catalog)
 
+function defaultRaidDate() {
+  const date = new Date()
+  date.setDate(date.getDate() - 1)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const showCreate = ref(false)
 const form = reactive<CreateSessionRequest>({
   title: '',
@@ -15,25 +24,59 @@ const form = reactive<CreateSessionRequest>({
   default_min_bid: 100,
   default_bid_increment: 1,
   default_timer_seconds: 5400,
-  date_to: ''
+  date_to: defaultRaidDate()
 })
 const selectedInstanceIds = ref<number[]>([])
-const autoTitle = ref('')
+const sessionFaction = ref<'Alliance' | 'Horde'>('Alliance')
+const factionOptions = ['Alliance', 'Horde']
+const sessionColumns = [
+  { key: 'title', label: 'Session' },
+  { key: 'status', label: 'Status' },
+  { key: 'bid_currency', label: 'Currency' },
+  { key: 'bid', label: 'Bid' },
+  { key: 'default_timer_seconds', label: 'Timer' },
+  { key: 'player_count', label: 'Players' },
+  { key: 'actions', label: 'Actions' }
+]
 
 const selectedInstances = computed(() => instances.value.filter(instance => selectedInstanceIds.value.includes(instance.id)))
 
 onMounted(() => {
   sessionsStore.load()
   catalog.loadInstances()
+  updatePrebuiltTitle()
 })
 
-watch(selectedInstanceIds, () => {
-  const nextTitle = selectedInstances.value.map(instance => instance.name).join(' + ')
-  if (!form.title || form.title === autoTitle.value) {
-    form.title = nextTitle
+watch([selectedInstanceIds, sessionFaction, () => form.date_to], updatePrebuiltTitle)
+
+function formatPrebuiltDate(value?: string) {
+  if (!value) {
+    return ''
   }
-  autoTitle.value = nextTitle
-}, { deep: true })
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(date)
+}
+
+function factionTitle(faction: 'Alliance' | 'Horde') {
+  return faction === 'Alliance' ? '🔵 Alliance' : '🔴 Horde'
+}
+
+function updatePrebuiltTitle() {
+  const datePart = formatPrebuiltDate(form.date_to)
+  const factionPart = factionTitle(sessionFaction.value)
+  const instancePart = selectedInstances.value.map(instance => instance.name).join(' + ')
+  const raidPart = [factionPart, instancePart].filter(Boolean).join(' ')
+
+  form.title = datePart ? `${datePart} , ${raidPart}` : raidPart
+}
 
 function toggleInstance(id: number) {
   if (selectedInstanceIds.value.includes(id)) {
@@ -47,7 +90,45 @@ function isInstanceSelected(id: number) {
   return selectedInstanceIds.value.includes(id)
 }
 
+function formatDateTime(value: string) {
+  if (!value) {
+    return '—'
+  }
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value))
+}
+
+function sessionSubtitle(row: Record<string, any>) {
+  return [
+    row.code,
+    formatDateTime(row.created_at),
+    row.date_to || '—'
+  ].join(' · ')
+}
+
+function sessionRowKey(row: Record<string, any>) {
+  return row.id
+}
+
+async function openSession(row: Record<string, any>) {
+  await navigateTo(`/admin/sessions/${row.id}`)
+}
+
+async function copySession(row: Record<string, any>) {
+  if (!import.meta.client || !row.code) {
+    return
+  }
+  const url = new URL('/play', window.location.origin)
+  url.searchParams.set('code', row.code)
+  await navigator.clipboard.writeText(url.toString())
+}
+
 async function submitCreate() {
+  updatePrebuiltTitle()
   if (!form.title.trim()) {
     return
   }
@@ -55,9 +136,10 @@ async function submitCreate() {
     await sessionsStore.create({ ...form, instance_ids: selectedInstanceIds.value })
     showCreate.value = false
     form.title = ''
-    form.date_to = ''
+    form.date_to = defaultRaidDate()
+    sessionFaction.value = 'Alliance'
     selectedInstanceIds.value = []
-    autoTitle.value = ''
+    updatePrebuiltTitle()
   } catch {
     // store exposes error
   }
@@ -74,16 +156,7 @@ async function endSession(id: string) {
 
 <template>
   <main class="public-shell">
-    <AdminNav title="Sessions">
-      <template #actions>
-        <UButton
-          color="primary"
-          :icon="showCreate ? 'i-lucide-list' : 'i-lucide-plus'"
-          :label="showCreate ? 'Session list' : 'New session'"
-          @click="showCreate = !showCreate"
-        />
-      </template>
-    </AdminNav>
+    <AdminNav title="Sessions" />
 
     <UAlert
       v-if="error"
@@ -103,13 +176,21 @@ async function endSession(id: string) {
         @submit.prevent="submitCreate"
       >
         <UFormField
-          label="Title"
+          label="Prebuilt title"
           required
         >
           <UInput
             v-model="form.title"
+            readonly
             class="w-full"
-            placeholder="e.g. Karazhan Friday"
+            placeholder="Pick date, faction, and raid instances"
+          />
+        </UFormField>
+        <UFormField label="Faction">
+          <USelect
+            v-model="sessionFaction"
+            :items="factionOptions"
+            class="w-full"
           />
         </UFormField>
         <UFormField label="Raid instances">
@@ -193,53 +274,97 @@ async function endSession(id: string) {
       </div>
       <div
         v-else-if="!sessions.length"
-        class="py-10 text-center opacity-70"
+        class="session-empty"
       >
-        No sessions yet.
+        <p>No sessions yet.</p>
+        <UButton
+          color="primary"
+          icon="i-lucide-plus"
+          label="New session"
+          class="admin-data-table-primary-action"
+          @click="showCreate = true"
+        />
       </div>
       <div
         v-else
-        class="grid gap-3"
+        class="session-list-table"
       >
-        <UCard
-          v-for="session in sessions"
-          :key="session.id"
-          class="profile-hero-card"
+        <AdminDataTable
+          :columns="sessionColumns"
+          :rows="sessions"
+          :row-key="sessionRowKey"
+          clickable-rows
+          @row-click="openSession"
         >
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <div class="flex items-center gap-2">
-                <strong class="text-lg">{{ session.title }}</strong>
-                <UBadge
-                  :color="session.status === 'active' ? 'success' : 'neutral'"
-                  variant="soft"
-                >
-                  {{ session.status }}
-                </UBadge>
+          <template #header>
+            <div class="admin-data-table-heading">
+              <div>
+                <strong>Session list</strong>
+                <span>{{ sessions.length }} sessions</span>
               </div>
-              <div class="mt-1 text-sm opacity-70">
-                Code <span class="font-mono">{{ session.code }}</span> · {{ session.bid_currency }} · min {{ session.default_min_bid }}
-              </div>
-            </div>
-            <div class="flex gap-2">
               <UButton
                 color="primary"
-                variant="soft"
-                icon="i-lucide-settings"
-                label="Manage"
-                :to="`/admin/sessions/${session.id}`"
-              />
-              <UButton
-                v-if="session.status === 'active'"
-                color="error"
-                variant="soft"
-                icon="i-lucide-square"
-                label="End"
-                @click="endSession(session.id)"
+                icon="i-lucide-plus"
+                label="New session"
+                class="admin-data-table-primary-action"
+                @click="showCreate = true"
               />
             </div>
-          </div>
-        </UCard>
+          </template>
+          <template #cell-title="{ row }">
+            <div class="session-list-title">
+              <strong>{{ row.title }}</strong>
+              <span>{{ sessionSubtitle(row) }}</span>
+            </div>
+          </template>
+          <template #cell-status="{ row }">
+            <UBadge
+              :color="row.status === 'active' ? 'success' : 'neutral'"
+              variant="soft"
+            >
+              {{ row.status }}
+            </UBadge>
+          </template>
+          <template #cell-bid_currency="{ row }">
+            <span class="session-list-cap">{{ row.bid_currency }}</span>
+          </template>
+          <template #cell-bid="{ row }">
+            <div class="session-list-stat">
+              <strong>{{ row.default_min_bid }}</strong>
+              <span>+{{ row.default_bid_increment }}</span>
+            </div>
+          </template>
+          <template #cell-default_timer_seconds="{ row }">
+            {{ row.default_timer_seconds }}s
+          </template>
+          <template #cell-actions="{ row }">
+            <div class="session-list-actions">
+              <UTooltip text="Copy session">
+                <UButton
+                  color="neutral"
+                  variant="soft"
+                  icon="i-lucide-copy"
+                  aria-label="Copy session"
+                  class="session-list-action-button"
+                  @click.stop="copySession(row)"
+                />
+              </UTooltip>
+              <UTooltip
+                v-if="row.status === 'active'"
+                text="End session"
+              >
+                <UButton
+                  color="error"
+                  variant="soft"
+                  icon="i-lucide-square"
+                  aria-label="End session"
+                  class="session-list-action-button"
+                  @click.stop="endSession(row.id)"
+                />
+              </UTooltip>
+            </div>
+          </template>
+        </AdminDataTable>
       </div>
     </template>
   </main>

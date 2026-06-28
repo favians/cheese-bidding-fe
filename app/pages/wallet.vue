@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CreateWithdrawalRequest, WithdrawalStatus } from '#shared/types/api'
+import type { LedgerEntry } from '#shared/types/api'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -17,6 +18,18 @@ const statusColor: Record<WithdrawalStatus, 'warning' | 'info' | 'error' | 'succ
   approved: 'info',
   rejected: 'error',
   paid: 'success'
+}
+
+function ledgerSourceLabel(entry: LedgerEntry) {
+  if (entry.source === 'auction_win') return 'Auction win'
+  if (entry.source === 'incoming_balance') return 'Payout'
+  if (entry.source === 'withdrawal') return 'Withdrawal'
+  if (entry.source === 'withdrawal_refund') return 'Withdrawal refund'
+  return entry.source
+}
+
+function ledgerAmountClass(entry: LedgerEntry) {
+  return entry.type === 'credit' ? 'text-green-400' : 'text-red-400'
 }
 
 async function submit() {
@@ -200,8 +213,8 @@ async function submit() {
           class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm"
         >
           <span>
-            <span :class="entry.type === 'credit' ? 'text-green-400' : 'text-red-400'">{{ entry.amount }}</span>
-            <span class="ml-2 opacity-60">{{ entry.source }}</span>
+            <span :class="ledgerAmountClass(entry)">{{ entry.amount }}</span>
+            <span class="ml-2 opacity-70">{{ ledgerSourceLabel(entry) }}</span>
             <span
               v-if="entry.note"
               class="ml-2 opacity-50"

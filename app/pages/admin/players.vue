@@ -39,8 +39,26 @@ let timer: ReturnType<typeof setTimeout> | undefined
 const statusItems = ['all', 'active', 'inactive']
 const classItems = wowClasses.map(item => item.name)
 const factionItems = ['Horde', 'Alliance']
+const playerColumns = [
+  { key: 'player', label: 'Player' },
+  { key: 'discord_id', label: 'Discord' },
+  { key: 'characters', label: 'Characters' },
+  { key: 'balance', label: 'Balance' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions' }
+]
 const selectedClass = computed(() => wowClasses.find(item => item.name === characterForm.class))
 const specializationItems = computed(() => selectedClass.value?.specializations ?? [])
+const activePlayerDetailKeys = computed(() => {
+  const keys = new Set<number>()
+  if (expandedClientId.value) keys.add(expandedClientId.value)
+  if (balanceClientId.value) keys.add(balanceClientId.value)
+  return [...keys]
+})
+
+function playerRowKey(row: Record<string, any>) {
+  return row.id
+}
 
 function loadPlayers(page = pagination.value?.page ?? 1) {
   return store.load({ search: search.value, status: status.value, page })
@@ -171,16 +189,7 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
     <AdminNav
       title="Players"
       subtitle="Onboard & manage player accounts"
-    >
-      <template #actions>
-        <UButton
-          color="primary"
-          icon="i-lucide-user-plus"
-          label="New player"
-          @click="showCreate = !showCreate"
-        />
-      </template>
-    </AdminNav>
+    />
 
     <UAlert
       v-if="error"
@@ -257,21 +266,6 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
       </form>
     </UCard>
 
-    <section class="user-list-toolbar mb-4">
-      <UInput
-        v-model="search"
-        class="w-full"
-        icon="i-lucide-search"
-        placeholder="Search by username or discord…"
-      />
-      <USelect
-        v-model="status"
-        :items="statusItems"
-        class="w-36"
-      />
-      <span class="text-sm opacity-70">{{ totalPlayersText() }}</span>
-    </section>
-
     <div
       v-if="loading && !clients.length"
       class="py-8 text-center opacity-70"
@@ -280,92 +274,183 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
     </div>
     <div
       v-else-if="!clients.length"
-      class="py-8 text-center opacity-70"
+      class="admin-data-table-empty"
     >
-      No players.
+      <UIcon
+        name="i-lucide-users-round"
+        class="h-8 w-8"
+      />
+      <strong>No players yet.</strong>
+      <span>Create the first player account, then attach characters from this page.</span>
+      <UButton
+        color="primary"
+        icon="i-lucide-user-plus"
+        label="New player"
+        class="admin-data-table-primary-action"
+        @click="showCreate = true"
+      />
     </div>
-    <div
+    <AdminDataTable
       v-else
-      class="grid gap-2"
+      :columns="playerColumns"
+      :rows="clients"
+      :row-key="playerRowKey"
+      :detail-row-keys="activePlayerDetailKeys"
     >
-      <div
-        v-for="c in clients"
-        :key="c.id"
-        class="admin-player-row"
-      >
-        <div class="admin-player-summary">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2">
-              <strong>{{ c.username }}</strong>
-              <span class="text-xs opacity-50">#{{ c.id }}</span>
-              <UIcon
-                v-if="c.is_favorite"
-                name="i-lucide-star"
-                class="h-4 w-4 text-(--color-cheese-400)"
-              />
-              <UBadge
-                v-if="!c.is_active"
-                color="neutral"
-                variant="soft"
-              >
-                inactive
-              </UBadge>
-            </div>
-            <div class="truncate text-xs opacity-60">
-              {{ c.discord_id }}
-              <span v-if="charactersByClient[c.id]">· {{ characterRows(c.id).length }} characters</span>
-            </div>
+      <template #header>
+        <div class="admin-data-table-heading">
+          <div>
+            <strong>Player list</strong>
+            <span>{{ totalPlayersText() }}</span>
           </div>
-          <div class="flex flex-wrap gap-1.5">
+          <UButton
+            color="primary"
+            icon="i-lucide-user-plus"
+            label="New player"
+            class="admin-data-table-primary-action"
+            @click="showCreate = !showCreate"
+          />
+        </div>
+        <div class="admin-data-table-toolbar">
+          <UInput
+            v-model="search"
+            class="w-full"
+            icon="i-lucide-search"
+            placeholder="Search by username or discord…"
+          />
+          <USelect
+            v-model="status"
+            :items="statusItems"
+            class="w-36"
+          />
+        </div>
+      </template>
+
+      <template #cell-player="{ row: c }">
+        <div class="session-list-title">
+          <strong>{{ c.username }}</strong>
+          <span>#{{ c.id }}</span>
+        </div>
+      </template>
+
+      <template #cell-discord_id="{ row: c }">
+        <span class="admin-player-mono">{{ c.discord_id }}</span>
+      </template>
+
+      <template #cell-characters="{ row: c }">
+        <span v-if="charactersByClient[c.id]">{{ characterRows(c.id).length }} characters</span>
+        <span
+          v-else
+          class="admin-player-muted"
+        >
+          Not loaded
+        </span>
+      </template>
+
+      <template #cell-balance="{ row: c }">
+        <span v-if="balancesByClient[c.id]">{{ balanceAmount(c.id) }}</span>
+        <span
+          v-else
+          class="admin-player-muted"
+        >
+          Not loaded
+        </span>
+      </template>
+
+      <template #cell-status="{ row: c }">
+        <div class="admin-player-badges">
+          <UBadge
+            :color="c.is_active ? 'success' : 'neutral'"
+            variant="soft"
+          >
+            {{ c.is_active ? 'active' : 'inactive' }}
+          </UBadge>
+          <UBadge
+            v-if="c.is_favorite"
+            color="warning"
+            variant="soft"
+          >
+            favorite
+          </UBadge>
+        </div>
+      </template>
+
+      <template #cell-actions="{ row: c }">
+        <div class="admin-data-table-actions">
+          <UTooltip text="Characters">
             <UButton
               size="xs"
               color="neutral"
               variant="soft"
-              :icon="expandedClientId === c.id ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-              label="Characters"
+              :icon="expandedClientId === c.id ? 'i-lucide-chevron-up' : 'i-lucide-users-round'"
+              aria-label="Characters"
+              class="admin-data-table-icon-button"
               @click="toggleCharacters(c.id)"
             />
+          </UTooltip>
+          <UTooltip text="Balance">
             <UButton
               size="xs"
               color="neutral"
               variant="soft"
               :icon="balanceClientId === c.id ? 'i-lucide-wallet-cards' : 'i-lucide-wallet'"
-              label="Balance"
+              aria-label="Balance"
+              class="admin-data-table-icon-button"
               @click="toggleBalance(c.id)"
             />
+          </UTooltip>
+          <UTooltip text="Edit Discord">
             <UButton
               size="xs"
               color="neutral"
               variant="soft"
               icon="i-lucide-pencil"
-              label="Discord"
+              aria-label="Edit Discord"
+              class="admin-data-table-icon-button"
               @click="editDiscord(c.id, c.discord_id)"
             />
+          </UTooltip>
+          <UTooltip :text="c.is_favorite ? 'Remove favorite' : 'Mark favorite'">
             <UButton
               size="xs"
               :color="c.is_favorite ? 'warning' : 'neutral'"
               variant="soft"
               :icon="c.is_favorite ? 'i-lucide-star-off' : 'i-lucide-star'"
-              :label="c.is_favorite ? 'Unfav' : 'Fav'"
+              aria-label="Toggle favorite"
+              class="admin-data-table-icon-button"
               @click="store.setFavorite(c.id, !c.is_favorite)"
             />
+          </UTooltip>
+          <UTooltip :text="c.is_active ? 'Deactivate' : 'Activate'">
             <UButton
               size="xs"
               :color="c.is_active ? 'error' : 'success'"
               variant="soft"
-              :label="c.is_active ? 'Deactivate' : 'Activate'"
+              :icon="c.is_active ? 'i-lucide-user-x' : 'i-lucide-user-check'"
+              aria-label="Toggle active"
+              class="admin-data-table-icon-button"
               @click="store.setActive(c.id, !c.is_active)"
             />
+          </UTooltip>
+          <UTooltip text="Reset password">
             <UButton
               size="xs"
               color="primary"
               variant="soft"
               icon="i-lucide-key-round"
-              label="Reset pw"
+              aria-label="Reset password"
+              class="admin-data-table-icon-button"
               @click="store.resetPassword(c.id)"
             />
-          </div>
+          </UTooltip>
         </div>
+      </template>
+
+      <template #detail="{ row: c }">
+        <div
+          v-if="balanceClientId === c.id || expandedClientId === c.id"
+          class="admin-data-table-detail"
+        >
 
         <div
           v-if="balanceClientId === c.id"
@@ -547,8 +632,9 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+        </div>
+      </template>
+    </AdminDataTable>
 
     <div
       v-if="pagination && pagination.page_total > 1"

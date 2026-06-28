@@ -12,12 +12,13 @@ Greenfield **Nuxt 3 + TypeScript** frontend for CheeseBid, replacing the old van
 - **Session ended UX**: `session.ended` keeps the final state visible and shows a clear "Session ended" banner above results.
 - **Session deletion UX**: `session.deleted` closes SSE, clears live rows, and shows a "Session unavailable" state with a back-to-join action.
 - **Live bidding V1 UI parity**: `/play/[id]` uses V1-like auction/prebid rows (`auction-card`, `loot-cell`, `item-icon`, `bid-state`, `timer-cell`, `bid-controls`) and the global cheese watermark is scoped to login/join pages only, so live/session pages keep the darker raid-board look.
-- **Admin**: modern shared admin navbar (`AdminNav`) across sessions, players, money, and session detail; session list/create (`/admin`) with instance picker and V1-like mutually exclusive create/list view (opening New session hides session list); session control panel (`/admin/sessions/[id]`) with session-instance assignment and copy-join as a single pasteable `/play?code=<SESSION_CODE>` URL — open auctions/prebids via the catalog **ItemPicker**, close/reset/cancel, resolve/cancel prebids, 2s refresh (admin isn't a session member so can't use the client SSE). Admin players (`/admin/players`) has search, active/inactive filter, pagination, favorite/active toggles, Discord edit, password reset reveal, expandable character management, and balance detail drilldown. Admin money (`/admin/money`) exists.
+- **Admin**: modern shared admin navbar (`AdminNav`) across sessions, players, money, and session detail; session list/create (`/admin`) now uses reusable `AdminDataTable` with row-click navigation, icon-only tooltip actions, copy-join, and `New session` in the table header instead of the navbar. New session title is prebuilt from default raid date (`today - 1`), faction (`🔵 Alliance` / `🔴 Horde`), and selected instance names; faction is not stored separately. Session control panel (`/admin/sessions/[id]`) has session-instance assignment and copy-join as a single pasteable `/play?code=<SESSION_CODE>` URL — open auctions/prebids via the catalog **ItemPicker**, close/reset/cancel, resolve/cancel prebids, 2s refresh (admin isn't a session member so can't use the client SSE). Admin players (`/admin/players`) has search, active/inactive filter, pagination, favorite/active toggles, Discord edit, password reset reveal, expandable character management, and balance detail drilldown. Admin money (`/admin/money`) exists.
+- **Wallet settlement UX**: winner auction settlement is backend-driven; wallet ledger labels `auction_win` as `Auction win` and displays the debit note (`auction win: <item>`). Amount strings stay exact and debit/credit coloring remains type-based.
 - **Catalog is id-based, no slug**: `Instance` has `id`; `Item` has `id` + `wow_item_id` + `instance_id`; the picker filters by `instance_id`. Icons keyed by `wow_item_id`.
 
 ### Remaining
 - admin players V1 parity polish: deeper V1-like styling. Status filter, pagination, password reset flow, character management, and balance detail drilldown are in place.
-- session/bidding hardening: broader edge-case tests for ended/deleted/session lifecycle flows.
+- session/bidding hardening: broader edge-case tests for ended/deleted/session lifecycle flows and refund UX once BE reset/cancel settlement rules are chosen.
 - profile/character polish and V1 SQLite → Postgres migration support.
 
 ## Stack (locked)
@@ -72,6 +73,7 @@ pages/                     file-based routes (auto-generated router)
   index.vue, login.vue, profile.vue, s/[code].vue, admin/...
 layouts/                   shared shells (default, admin)
 components/                auto-imported UI (Nuxt UI + custom)
+  AdminDataTable.vue       reusable admin table shell with header/cell slots and optional row-click
 composables/               auto-imported logic (useAuth, useApi, ...)
 stores/                    Pinia stores per domain
 middleware/                route middleware (auth tiers)
