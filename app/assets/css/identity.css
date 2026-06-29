@@ -679,6 +679,10 @@ body::after {
   margin-bottom: 24px;
 }
 
+.profile-section-alert {
+  margin-bottom: 16px;
+}
+
 .identity-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -39,6 +39,16 @@ const characterColumns: TableColumn<ClientCharacter>[] = [
   { id: 'actions', header: '' }
 ]
 
+onMounted(async () => {
+  if (!characterStore.loaded && !characterStore.loading) {
+    try {
+      await characterStore.load()
+    } catch {
+      // Store exposes the safe API error in the panel.
+    }
+  }
+})
+
 watch(() => characterState.class, () => {
   if (!specializationItems.value.includes(characterState.main_spec)) {
     characterState.main_spec = ''
@@ -152,6 +162,11 @@ function classIcon(className: string) {
 }
 
 async function submitPassword() {
+  auth.error = ''
+  if (!currentPassword.value) {
+    auth.error = 'Current password is required'
+    return
+  }
   if (newPassword.value.length < 6) {
     auth.error = 'New password must contain at least 6 characters'
     return
@@ -214,7 +229,7 @@ async function logout() {
       <article class="profile-info-card">
         <span>Account Status</span>
         <strong>{{ auth.profile?.is_active ? 'Active' : 'Inactive' }}</strong>
-        <small>Identity verified through CheeseBidding V2</small>
+        <small>{{ auth.profile?.is_active ? 'Identity verified through CheeseBidding V2' : 'Character and password changes are blocked until admin reactivates this account' }}</small>
       </article>
     </section>
 
@@ -256,10 +271,10 @@ async function logout() {
             <button
               class="profile-menu-item"
               type="button"
-              disabled
+              @click="navigateTo('/wallet')"
             >
               Balance
-              <small>Next module</small>
+              <small>Wallet</small>
             </button>
           </nav>
         </aside>
@@ -297,6 +312,16 @@ async function logout() {
             <span>Password</span>
             <h2>Reset Password</h2>
           </div>
+
+          <UAlert
+            v-if="!auth.profile?.is_active"
+            class="profile-section-alert"
+            color="warning"
+            variant="soft"
+            icon="i-lucide-lock"
+            title="Account inactive"
+            description="Password changes are disabled until an admin reactivates your account."
+          />
 
           <UCard class="profile-password-card">
             <form
@@ -349,6 +374,7 @@ async function logout() {
                 label="Reset Password"
                 icon="i-lucide-key-round"
                 :loading="auth.loading"
+                :disabled="!auth.profile?.is_active"
               />
             </form>
           </UCard>
@@ -362,6 +388,16 @@ async function logout() {
             <span>Characters</span>
             <h2>{{ editingID ? 'Edit Character' : 'Character List' }}</h2>
           </div>
+
+          <UAlert
+            v-if="!auth.profile?.is_active"
+            class="profile-section-alert"
+            color="warning"
+            variant="soft"
+            icon="i-lucide-lock"
+            title="Account inactive"
+            description="Character changes are disabled until an admin reactivates your account."
+          />
 
           <UCard class="character-form-card">
             <UForm
@@ -457,6 +493,7 @@ async function logout() {
                   :label="editingID ? 'Save Character' : 'Add Character'"
                   :icon="editingID ? 'i-lucide-save' : 'i-lucide-plus'"
                   :loading="characterStore.saving"
+                  :disabled="!auth.profile?.is_active"
                 />
                 <UButton
                   v-if="editingID"

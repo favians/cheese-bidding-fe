@@ -1,18 +1,63 @@
 <script setup lang="ts">
-import type { CreateIncomingRequest, WithdrawalStatus } from '#shared/types/api'
+import type { Balance, CreateIncomingRequest, IncomingBalance, IncomingStatus, LedgerEntry, Withdrawal, WithdrawalStatus } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
 const store = useAdminMoneyStore()
-const { incoming, withdrawals, maintenance, goldRate, loading, saving, error } = storeToRefs(store)
+const { balances, ledger, incoming, withdrawals, maintenance, goldRate, loading, saving, error } = storeToRefs(store)
 
 const form = reactive<CreateIncomingRequest>({ client_id: 0, amount: 0, week_id: '', note: '' })
 const rateDraft = ref('0')
+const incomingStatusFilter = ref<'all' | IncomingStatus>('all')
+const withdrawalStatusFilter = ref<'all' | WithdrawalStatus>('all')
+const ledgerTypeFilter = ref<'all' | 'credit' | 'debit'>('all')
+const ledgerSourceFilter = ref('all')
+const moneySearch = ref('')
+
+const incomingStatusItems = ['all', 'pending', 'confirmed', 'cancelled']
+const withdrawalStatusItems = ['all', 'pending', 'approved', 'rejected', 'paid']
+const ledgerTypeItems = ['all', 'credit', 'debit']
+const balanceColumns = [
+  { key: 'client_id', label: 'Client' },
+  { key: 'balance_amount', label: 'Balance' }
+]
+const ledgerColumns = [
+  { key: 'client_id', label: 'Client' },
+  { key: 'source', label: 'Source' },
+  { key: 'type', label: 'Type' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'balance_after', label: 'After' },
+  { key: 'note', label: 'Note' },
+  { key: 'created_at', label: 'Created' }
+]
+const incomingColumns = [
+  { key: 'client_id', label: 'Client' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'week_id', label: 'Week' },
+  { key: 'status', label: 'Status' },
+  { key: 'created_at', label: 'Created' },
+  { key: 'actions', label: 'Actions' }
+]
+const withdrawalColumns = [
+  { key: 'client_id', label: 'Client' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'payment_method', label: 'Method' },
+  { key: 'status', label: 'Status' },
+  { key: 'admin_note', label: 'Admin note' },
+  { key: 'created_at', label: 'Created' },
+  { key: 'actions', label: 'Actions' }
+]
 
 onMounted(async () => {
   await store.load()
   rateDraft.value = goldRate.value
 })
+
+const incomingStatusColor: Record<IncomingStatus, 'warning' | 'success' | 'neutral'> = {
+  pending: 'warning',
+  confirmed: 'success',
+  cancelled: 'neutral'
+}
 
 const statusColor: Record<WithdrawalStatus, 'warning' | 'info' | 'error' | 'success'> = {
   pending: 'warning',
@@ -21,11 +66,67 @@ const statusColor: Record<WithdrawalStatus, 'warning' | 'info' | 'error' | 'succ
   paid: 'success'
 }
 
+const ledgerSources = computed(() => {
+  const sources = new Set(ledger.value.map(row => row.source).filter(Boolean))
+  return ['all', ...Array.from(sources).sort()]
+})
+
+const filteredBalances = computed(() => {
+  return balances.value.filter(row => rowMatchesMoneySearch(row.client_id, row.balance_amount))
+})
+
+const filteredLedger = computed(() => {
+  return ledger.value.filter(row => {
+    if (ledgerTypeFilter.value !== 'all' && row.type !== ledgerTypeFilter.value) return false
+    if (ledgerSourceFilter.value !== 'all' && row.source !== ledgerSourceFilter.value) return false
+    return rowMatchesMoneySearch(row.client_id, row.source, row.type, row.amount, row.balance_after, row.note, row.session_snapshot)
+  })
+})
+
 // allowed next states from each withdrawal status
 function nextStates(status: WithdrawalStatus): WithdrawalStatus[] {
   if (status === 'pending') return ['approved', 'rejected']
   if (status === 'approved') return ['paid', 'rejected']
   return []
+}
+
+const filteredIncoming = computed(() => {
+  return incoming.value.filter(row => {
+    if (incomingStatusFilter.value !== 'all' && row.status !== incomingStatusFilter.value) return false
+    return rowMatchesMoneySearch(row.client_id, row.amount, row.week_id, row.note)
+  })
+})
+
+const filteredWithdrawals = computed(() => {
+  return withdrawals.value.filter(row => {
+    if (withdrawalStatusFilter.value !== 'all' && row.status !== withdrawalStatusFilter.value) return false
+    return rowMatchesMoneySearch(row.client_id, row.amount, row.payment_method, row.note, row.admin_note)
+  })
+})
+
+function rowMatchesMoneySearch(...values: Array<string | number | undefined>) {
+  const needle = moneySearch.value.trim().toLowerCase()
+  if (!needle) return true
+  return values.some(value => String(value ?? '').toLowerCase().includes(needle))
+}
+
+function formatMoney(value: string | number) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return String(value)
+  return numeric.toLocaleString('en-US')
+}
+
+function moneyTone(value: string | number) {
+  return Number(value) < 0 ? 'admin-money-amount admin-money-amount--debit' : 'admin-money-amount admin-money-amount--credit'
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value))
 }
 
 async function submitIncoming() {
@@ -41,8 +142,18 @@ async function submitIncoming() {
 
 async function moveWithdrawal(id: string, status: WithdrawalStatus) {
   const note = window.prompt(`Admin note for "${status}" (optional)`) ?? ''
+  if (!window.confirm(`Move withdrawal to ${status}?`)) return
   try {
     await store.updateWithdrawal(id, status, note)
+  } catch {
+    // store exposes error
+  }
+}
+
+async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel') {
+  if (!window.confirm(`${action === 'confirm' ? 'Confirm' : 'Cancel'} payout ${row.amount} for client ${row.client_id}?`)) return
+  try {
+    await store.settleIncoming(row.id, action)
   } catch {
     // store exposes error
   }
@@ -148,102 +259,252 @@ async function moveWithdrawal(id: string, status: WithdrawalStatus) {
       </form>
     </UCard>
 
-    <!-- Incoming payouts -->
-    <section class="mb-6">
-      <h2 class="mb-2 text-lg font-semibold">
-        Incoming payouts
-      </h2>
-      <div
-        v-if="!incoming.length"
-        class="py-4 text-center text-sm opacity-60"
+    <!-- Balances -->
+    <section class="admin-money-section">
+      <AdminDataTable
+        :rows="filteredBalances"
+        :columns="balanceColumns"
+        row-key="client_id"
       >
-        None.
-      </div>
-      <div
-        v-else
-        class="grid gap-2"
-      >
-        <div
-          v-for="row in incoming"
-          :key="row.id"
-          class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm"
-        >
-          <span>
-            client <strong>{{ row.client_id }}</strong> · <strong>{{ row.amount }}</strong>
-            <span class="opacity-60">· {{ row.week_id || '—' }} · {{ row.status }}</span>
-          </span>
-          <div
-            v-if="row.status === 'pending'"
-            class="flex gap-2"
-          >
-            <UButton
-              size="xs"
-              color="success"
-              variant="soft"
-              label="Confirm"
-              @click="store.settleIncoming(row.id, 'confirm')"
-            />
-            <UButton
-              size="xs"
-              color="error"
-              variant="soft"
-              label="Cancel"
-              @click="store.settleIncoming(row.id, 'cancel')"
-            />
+        <template #header>
+          <div class="admin-money-table-header">
+            <div>
+              <h2>Client balances</h2>
+              <span>{{ filteredBalances.length }} shown / {{ balances.length }} total</span>
+            </div>
+            <div class="admin-money-filters">
+              <UInput
+                v-model="moneySearch"
+                icon="i-lucide-search"
+                placeholder="Search client, amount, note"
+              />
+            </div>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <template #cell-client_id="{ row }">
+          <strong>Client {{ (row as Balance).client_id }}</strong>
+        </template>
+        <template #cell-balance_amount="{ row }">
+          <span :class="moneyTone((row as Balance).balance_amount)">
+            {{ formatMoney((row as Balance).balance_amount) }}
+          </span>
+        </template>
+      </AdminDataTable>
+    </section>
+
+    <!-- Ledger -->
+    <section class="admin-money-section">
+      <AdminDataTable
+        :rows="filteredLedger"
+        :columns="ledgerColumns"
+        row-key="id"
+      >
+        <template #header>
+          <div class="admin-money-table-header">
+            <div>
+              <h2>Balance ledger</h2>
+              <span>{{ filteredLedger.length }} shown / {{ ledger.length }} total</span>
+            </div>
+            <div class="admin-money-filters">
+              <USelect
+                v-model="ledgerSourceFilter"
+                :items="ledgerSources"
+              />
+              <USelect
+                v-model="ledgerTypeFilter"
+                :items="ledgerTypeItems"
+              />
+            </div>
+          </div>
+        </template>
+
+        <template #cell-client_id="{ row }">
+          <strong>Client {{ (row as LedgerEntry).client_id }}</strong>
+        </template>
+        <template #cell-source="{ row }">
+          <span class="admin-money-muted">{{ (row as LedgerEntry).source }}</span>
+        </template>
+        <template #cell-type="{ row }">
+          <UBadge
+            :color="(row as LedgerEntry).type === 'credit' ? 'success' : 'error'"
+            variant="soft"
+          >
+            {{ (row as LedgerEntry).type }}
+          </UBadge>
+        </template>
+        <template #cell-amount="{ row }">
+          <span :class="moneyTone((row as LedgerEntry).amount)">
+            {{ formatMoney((row as LedgerEntry).amount) }}
+          </span>
+        </template>
+        <template #cell-balance_after="{ row }">
+          {{ formatMoney((row as LedgerEntry).balance_after) }}
+        </template>
+        <template #cell-note="{ row }">
+          <span class="admin-money-muted">{{ (row as LedgerEntry).note || (row as LedgerEntry).session_snapshot || '—' }}</span>
+        </template>
+        <template #cell-created_at="{ row }">
+          {{ formatDate((row as LedgerEntry).created_at) }}
+        </template>
+      </AdminDataTable>
+    </section>
+
+    <!-- Incoming payouts -->
+    <section class="admin-money-section">
+      <AdminDataTable
+        :rows="filteredIncoming"
+        :columns="incomingColumns"
+        row-key="id"
+      >
+        <template #header>
+          <div class="admin-money-table-header">
+            <div>
+              <h2>Incoming payouts</h2>
+              <span>{{ filteredIncoming.length }} shown / {{ incoming.length }} total</span>
+            </div>
+            <div class="admin-money-filters">
+              <UInput
+                v-model="moneySearch"
+                icon="i-lucide-search"
+                placeholder="Search client, amount, note"
+              />
+              <USelect
+                v-model="incomingStatusFilter"
+                :items="incomingStatusItems"
+              />
+            </div>
+          </div>
+        </template>
+
+        <template #cell-client_id="{ row }">
+          <strong>Client {{ (row as IncomingBalance).client_id }}</strong>
+        </template>
+        <template #cell-amount="{ row }">
+          <span class="admin-money-amount">+{{ formatMoney((row as IncomingBalance).amount) }}</span>
+        </template>
+        <template #cell-week_id="{ row }">
+          {{ (row as IncomingBalance).week_id || '—' }}
+        </template>
+        <template #cell-status="{ row }">
+          <UBadge
+            :color="incomingStatusColor[(row as IncomingBalance).status]"
+            variant="soft"
+          >
+            {{ (row as IncomingBalance).status }}
+          </UBadge>
+        </template>
+        <template #cell-created_at="{ row }">
+          {{ formatDate((row as IncomingBalance).created_at) }}
+        </template>
+        <template #cell-actions="{ row }">
+          <div
+            v-if="(row as IncomingBalance).status === 'pending'"
+            class="admin-money-actions"
+          >
+            <UTooltip text="Confirm payout and credit balance">
+              <UButton
+                size="xs"
+                color="success"
+                variant="soft"
+                icon="i-lucide-check"
+                :loading="saving"
+                aria-label="Confirm payout"
+                @click="settleIncoming(row as IncomingBalance, 'confirm')"
+              />
+            </UTooltip>
+            <UTooltip text="Cancel payout">
+              <UButton
+                size="xs"
+                color="error"
+                variant="soft"
+                icon="i-lucide-x"
+                :loading="saving"
+                aria-label="Cancel payout"
+                @click="settleIncoming(row as IncomingBalance, 'cancel')"
+              />
+            </UTooltip>
+          </div>
+          <span
+            v-else
+            class="admin-money-muted"
+          >No action</span>
+        </template>
+      </AdminDataTable>
     </section>
 
     <!-- Withdrawals -->
-    <section>
-      <h2 class="mb-2 text-lg font-semibold">
-        Withdrawals
-      </h2>
-      <div
-        v-if="loading && !withdrawals.length"
-        class="py-4 text-center text-sm opacity-60"
+    <section class="admin-money-section">
+      <AdminDataTable
+        :rows="filteredWithdrawals"
+        :columns="withdrawalColumns"
+        row-key="id"
       >
-        Loading…
-      </div>
-      <div
-        v-else-if="!withdrawals.length"
-        class="py-4 text-center text-sm opacity-60"
-      >
-        None.
-      </div>
-      <div
-        v-else
-        class="grid gap-2"
-      >
-        <div
-          v-for="wd in withdrawals"
-          :key="wd.id"
-          class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm"
-        >
-          <span>
-            client <strong>{{ wd.client_id }}</strong> · <strong>{{ wd.amount }}</strong> · {{ wd.payment_method }}
-            <UBadge
-              :color="statusColor[wd.status]"
-              variant="soft"
-              class="ml-2"
-            >
-              {{ wd.status }}
-            </UBadge>
-          </span>
-          <div class="flex gap-2">
-            <UButton
-              v-for="s in nextStates(wd.status)"
-              :key="s"
-              size="xs"
-              :color="s === 'rejected' ? 'error' : s === 'paid' ? 'success' : 'primary'"
-              variant="soft"
-              :label="s"
-              @click="moveWithdrawal(wd.id, s)"
-            />
+        <template #header>
+          <div class="admin-money-table-header">
+            <div>
+              <h2>Withdrawals</h2>
+              <span>{{ filteredWithdrawals.length }} shown / {{ withdrawals.length }} total</span>
+            </div>
+            <div class="admin-money-filters">
+              <USelect
+                v-model="withdrawalStatusFilter"
+                :items="withdrawalStatusItems"
+              />
+            </div>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <template #cell-client_id="{ row }">
+          <strong>Client {{ (row as Withdrawal).client_id }}</strong>
+        </template>
+        <template #cell-amount="{ row }">
+          <span class="admin-money-amount">-{{ formatMoney((row as Withdrawal).amount) }}</span>
+        </template>
+        <template #cell-payment_method="{ row }">
+          {{ (row as Withdrawal).payment_method || '—' }}
+        </template>
+        <template #cell-status="{ row }">
+          <UBadge
+            :color="statusColor[(row as Withdrawal).status]"
+            variant="soft"
+          >
+            {{ (row as Withdrawal).status }}
+          </UBadge>
+        </template>
+        <template #cell-admin_note="{ row }">
+          <span class="admin-money-muted">{{ (row as Withdrawal).admin_note || '—' }}</span>
+        </template>
+        <template #cell-created_at="{ row }">
+          {{ formatDate((row as Withdrawal).created_at) }}
+        </template>
+        <template #cell-actions="{ row }">
+          <div
+            v-if="nextStates((row as Withdrawal).status).length"
+            class="admin-money-actions"
+          >
+            <UTooltip
+              v-for="s in nextStates((row as Withdrawal).status)"
+              :key="s"
+              :text="`Move to ${s}`"
+            >
+              <UButton
+                size="xs"
+                :color="s === 'rejected' ? 'error' : s === 'paid' ? 'success' : 'primary'"
+                variant="soft"
+                :icon="s === 'rejected' ? 'i-lucide-x' : s === 'paid' ? 'i-lucide-send' : 'i-lucide-check'"
+                :loading="saving"
+                :aria-label="`Move withdrawal to ${s}`"
+                @click="moveWithdrawal((row as Withdrawal).id, s)"
+              />
+            </UTooltip>
+          </div>
+          <span
+            v-else
+            class="admin-money-muted"
+          >No action</span>
+        </template>
+      </AdminDataTable>
     </section>
   </main>
 </template>

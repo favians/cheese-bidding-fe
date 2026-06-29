@@ -27,15 +27,60 @@ let poll: ReturnType<typeof setInterval> | undefined
 
 const activeAuctions = computed(() => auctions.value.filter(item => item.status === 'active'))
 const finishedAuctions = computed(() => auctions.value.filter(item => item.status !== 'active'))
+const closedAuctions = computed(() => auctions.value.filter(item => item.status === 'closed'))
+const cancelledAuctions = computed(() => auctions.value.filter(item => item.status === 'cancelled'))
 const openPrebids = computed(() => prebids.value.filter(item => item.status === 'open'))
 const resolvedPrebids = computed(() => prebids.value.filter(item => item.status !== 'open'))
 const selectedInstances = computed(() => instances.value.filter(instance => draftInstanceIds.value.includes(instance.id)))
 const allowedItemInstanceIds = computed(() => sessionInstances.value.map(instance => instance.id))
-const totalSold = computed(() => finishedAuctions.value.reduce((sum, item) => sum + (item.status === 'closed' ? item.winning_bid : 0), 0))
+const totalSold = computed(() => closedAuctions.value.reduce((sum, item) => sum + item.winning_bid, 0))
 const estimatedPayout = computed(() => {
   const playerCount = Math.max(session.value?.player_count ?? members.value.length ?? 0, 1)
   const cut = Math.max(0, Math.min(session.value?.management_cut_percent ?? 0, 100))
   return Math.floor((totalSold.value * (100 - cut)) / 100 / playerCount)
+})
+const managementCutAmount = computed(() => {
+  const cut = Math.max(0, Math.min(session.value?.management_cut_percent ?? 0, 100))
+  return Math.floor((totalSold.value * cut) / 100)
+})
+const resultSpendRows = computed(() => {
+  const rows = new Map<string, { member_id: string, name: string, total: number, items: number }>()
+  for (const auction of closedAuctions.value) {
+    const memberID = auction.winner_member_id || auction.current_winner_member_id
+    if (!memberID) continue
+    const current = rows.get(memberID) ?? {
+      member_id: memberID,
+      name: memberName(memberID),
+      total: 0,
+      items: 0
+    }
+    current.total += auction.winning_bid || auction.current_bid || 0
+    current.items += 1
+    rows.set(memberID, current)
+  }
+  return [...rows.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+})
+const resultSummaryText = computed(() => {
+  const lines = [
+    `${session.value?.title || 'Session'} — ${session.value?.code || ''}`,
+    `Total sold: ${totalSold.value}`,
+    `Management cut (${session.value?.management_cut_percent ?? 0}%): ${managementCutAmount.value}`,
+    `Estimated payout/player: ${estimatedPayout.value}`,
+    '',
+    'Winners:'
+  ]
+  if (!closedAuctions.value.length) {
+    lines.push('- No closed auctions yet')
+  } else {
+    for (const auction of closedAuctions.value) {
+      lines.push(`- ${auction.item_name}: ${auction.winning_bid} — ${memberName(auction.winner_member_id || auction.current_winner_member_id)}`)
+    }
+  }
+  if (cancelledAuctions.value.length || openPrebids.value.length) {
+    lines.push('')
+    lines.push(`Unresolved: ${cancelledAuctions.value.length} cancelled auctions, ${openPrebids.value.length} open prebids`)
+  }
+  return lines.join('\n')
 })
 const boardRows = computed(() => {
   if (boardTab.value === 'prebid') return openPrebids.value
@@ -126,6 +171,36 @@ async function saveInstances() {
 async function copyJoin() {
   if (!import.meta.client || !session.value) return
   await navigator.clipboard.writeText(joinURL.value)
+}
+
+async function copyResultSummary() {
+  if (!import.meta.client) return
+  await navigator.clipboard.writeText(resultSummaryText.value)
+}
+
+function exportResultCSV() {
+  if (!import.meta.client) return
+  const rows = [
+    ['Item', 'Winner', 'Amount', 'Status'],
+    ...finishedAuctions.value.map(auction => [
+      auction.item_name,
+      memberName(auction.winner_member_id || auction.current_winner_member_id),
+      String(auction.winning_bid || auction.current_bid || 0),
+      auction.status
+    ])
+  ]
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${session.value?.code || 'session'}-results.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+function csvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`
 }
 
 function resetAuctionForm() {
@@ -470,6 +545,74 @@ async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'res
           <span v-else-if="boardTab === 'results'">{{ finishedAuctions.length }} finished</span>
           <span v-else>{{ activeAuctions.length }} live</span>
         </div>
+
+        <section
+          v-if="boardTab === 'results'"
+          class="session-results-summary"
+        >
+          <div class="session-results-actions">
+            <div>
+              <h3>Finished Session Summary</h3>
+              <span>{{ closedAuctions.length }} sold · {{ cancelledAuctions.length }} cancelled · {{ openPrebids.length }} open prebids</span>
+            </div>
+            <div class="session-results-buttons">
+              <UButton
+                size="xs"
+                color="primary"
+                variant="soft"
+                icon="i-lucide-copy"
+                label="Copy Discord"
+                @click="copyResultSummary"
+              />
+              <UButton
+                size="xs"
+                color="neutral"
+                variant="soft"
+                icon="i-lucide-file-down"
+                label="CSV"
+                @click="exportResultCSV"
+              />
+            </div>
+          </div>
+
+          <div class="session-results-metrics">
+            <article>
+              <span>Total sold</span>
+              <strong>{{ totalSold }}</strong>
+            </article>
+            <article>
+              <span>Management cut</span>
+              <strong>{{ managementCutAmount }}</strong>
+            </article>
+            <article>
+              <span>Est. payout/player</span>
+              <strong>{{ estimatedPayout }}</strong>
+            </article>
+            <article>
+              <span>Players</span>
+              <strong>{{ session?.player_count || members.length }}</strong>
+            </article>
+          </div>
+
+          <div class="session-results-spend">
+            <h4>Per-player spend</h4>
+            <div
+              v-if="!resultSpendRows.length"
+              class="session-muted"
+            >
+              No winning spend yet.
+            </div>
+            <div
+              v-for="row in resultSpendRows"
+              :key="row.member_id"
+              class="session-results-spend-row"
+            >
+              <span>{{ row.name }}</span>
+              <small>{{ row.items }} item{{ row.items === 1 ? '' : 's' }}</small>
+              <strong>{{ row.total }}</strong>
+            </div>
+          </div>
+        </section>
 
         <div
           v-if="loading && !auctions.length && !prebids.length"

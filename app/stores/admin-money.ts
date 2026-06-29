@@ -1,4 +1,6 @@
 import type {
+  Balance,
+  LedgerEntry,
   IncomingBalance,
   Withdrawal,
   CreateIncomingRequest,
@@ -10,6 +12,8 @@ const KEY_MAINTENANCE = 'withdrawals_maintenance'
 const KEY_GOLD_RATE = 'withdrawals_gold_to_dollar_rate'
 
 export const useAdminMoneyStore = defineStore('admin-money', () => {
+  const balances = ref<Balance[]>([])
+  const ledger = ref<LedgerEntry[]>([])
   const incoming = ref<IncomingBalance[]>([])
   const withdrawals = ref<Withdrawal[]>([])
   const maintenance = ref(true)
@@ -23,10 +27,14 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
     loading.value = true
     error.value = ''
     try {
-      const [inc, wd] = await Promise.all([
+      const [bal, led, inc, wd] = await Promise.all([
+        request<Balance[]>('/api/v1/internal/balances?limit=100'),
+        request<LedgerEntry[]>('/api/v1/internal/balance/ledger?limit=100'),
         request<IncomingBalance[]>('/api/v1/internal/incoming-balances'),
         request<Withdrawal[]>('/api/v1/internal/withdrawals')
       ])
+      balances.value = bal ?? []
+      ledger.value = led ?? []
       incoming.value = inc ?? []
       withdrawals.value = wd ?? []
     } catch (cause) {
@@ -56,6 +64,7 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
     try {
       const row = await request<IncomingBalance>('/api/v1/internal/incoming-balances', { method: 'POST', body: payload })
       incoming.value = [row, ...incoming.value]
+      await loadMoneyTables()
       return row
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Could not queue payout'
@@ -71,6 +80,7 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
     try {
       const row = await request<IncomingBalance>(`/api/v1/internal/incoming-balances/${id}/${action}`, { method: 'POST' })
       patch(incoming, row)
+      await loadMoneyTables()
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : `Could not ${action} payout`
       throw cause
@@ -86,6 +96,7 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
         body: { status, admin_note: adminNote }
       })
       patch(withdrawals, row)
+      await loadMoneyTables()
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Could not update withdrawal'
       throw cause
@@ -108,12 +119,24 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
     goldRate.value = value
   }
 
+  async function loadMoneyTables() {
+    const { request } = useApi()
+    const [bal, led] = await Promise.all([
+      request<Balance[]>('/api/v1/internal/balances?limit=100'),
+      request<LedgerEntry[]>('/api/v1/internal/balance/ledger?limit=100')
+    ])
+    balances.value = bal ?? []
+    ledger.value = led ?? []
+  }
+
   function patch<T extends { id: string }>(list: Ref<T[]>, row: T) {
     const i = list.value.findIndex(x => x.id === row.id)
     if (i >= 0) list.value[i] = row
   }
 
   return {
+    balances,
+    ledger,
     incoming,
     withdrawals,
     maintenance,

@@ -198,6 +198,7 @@ export interface BalanceAdjustmentRequest {
 
 export interface LedgerEntry {
   id: string
+  client_id: number
   source: string
   type: string
   amount: string

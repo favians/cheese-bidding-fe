@@ -1,6 +1,8 @@
-# CheeseBid V2 FE — Remaining 7 Modules
+# CheeseBid V2 FE — Parity Checklist / Remaining Workstreams
 
-Frontend roadmap for finishing V2 migration. Pair each module with backend work in `cheesebidding/.ai/roadmap-7-modules.md`.
+Frontend checklist for finishing V2 migration parity. Pair each workstream with backend work in `cheesebidding/.ai/roadmap-7-modules.md`.
+
+This is no longer a literal "7 missing modules" roadmap. The seven sections remain as historical workstreams/checklists, but most core FE module work is implemented.
 
 Rules:
 - use Nuxt pages/stores/composables; no raw backend calls from components
@@ -15,12 +17,12 @@ Done since this roadmap was first written (do not re-scope as pending):
 - **Admin shell**: shared `AdminNav` (persistent V1-style action bar: Sessions · Players · Money + logout, active-route highlight) on all admin pages.
 - **Admin players** (`/admin/players`): search, active/inactive filter, pagination, create, discord edit, active/favorite toggles, password-reset reveal, expandable character management, balance/ledger/incoming/withdrawals drilldown.
 - **Wallet** (`/wallet`): balance, ledger, request withdrawal (held on submit), my-withdrawals with status, maintenance notice.
-- **Admin money** (`/admin/money`): maintenance toggle, gold rate, queue incoming, confirm/cancel, withdrawal review.
+- **Profile** (`/profile`): password change, character CRUD, class/faction/spec selectors, inactive-account guard messaging, wallet shortcut.
+- **Admin money** (`/admin/money`): maintenance toggle, gold rate, queue incoming, balances/ledger/incoming/withdrawal `AdminDataTable` views, filters/search, confirm/cancel/approve/reject/paid actions with confirmations.
 - Backend pairs the auction **close→debit / reopen→refund** spend side; FE bidding results already reflect winners.
 
 Still open V1-parity gaps not captured by the 7 modules below:
-- admin prebid ops **not-dropped** + **delete-last-bid** (UI + BE)
-- admin **balance-adjustment** UI (manual credit/debit) once BE endpoint exists
+- no big FE module gap known; remaining work is polish/verification.
 
 "Current state" lines per module may lag reality — trust this snapshot first.
 
@@ -59,6 +61,13 @@ Done when:
 - player can manage own characters without admin
 - forms recover cleanly after validation failure
 
+Implemented:
+- profile page loads character count immediately
+- balance menu opens `/wallet`
+- inactive account shows guard messaging
+- inactive account disables password and character submit
+- password form requires current password before submit
+
 ## 2. Withdrawals full flow
 
 Goal: player can request withdrawal; admin can review and move status.
@@ -91,6 +100,11 @@ Done when:
 - player request flow works end to end
 - admin can process withdrawals without raw IDs/confusing states
 
+Implemented:
+- `/admin/money` withdrawals use `AdminDataTable`
+- withdrawal status filter and shared search
+- approve/reject/paid actions use icon buttons, tooltips, and confirmation
+
 ## 3. Incoming balances / payout credits
 
 Goal: admin can manage payout credits before they hit wallets.
@@ -121,6 +135,11 @@ Files likely touched:
 
 Done when:
 - admin can see pending credits and safely confirm/cancel them
+
+Implemented:
+- `/admin/money` incoming balances use `AdminDataTable`
+- incoming status filter and shared search
+- confirm/cancel actions use icon buttons, tooltips, and confirmation
 
 ## 4. Admin money dashboard
 
@@ -157,6 +176,12 @@ Files likely touched:
 Done when:
 - admin can inspect balances, ledger history, incoming credits, withdrawals, and settings from one page
 
+Implemented:
+- incoming and withdrawals moved from large cards/list rows to themed `AdminDataTable`
+- balances and ledger added as themed `AdminDataTable` sections
+- ledger filters by source/type plus shared search
+- settings remain on same page with maintenance toggle and gold-rate input
+
 ## 5. Finished/session results export
 
 Goal: V1 finished-session helpers/export parity.
@@ -187,9 +212,21 @@ Files likely touched:
 Done when:
 - ended session can replace V1 finished helper workflow
 
+Implemented:
+- admin session Finished tab shows totals, management cut, estimated payout/player, sold/cancelled/open counts
+- per-player spend summary is built from closed auctions
+- Discord-ready summary copy
+- CSV result export
+
 ## 6. V1 SQLite → V2 Postgres migration support
 
 Goal: ensure imported V1 data displays correctly in V2 frontend.
+
+Current state:
+- V1 import has been applied locally into Postgres with zero skips / zero unsupported rows.
+- Admin money balance/ledger endpoints spot-verified after BE restart.
+- V1 prebid status `auctioned` is normalized to V2 `resolved`; imported session prebids now match FE `PrebidStatus`.
+- Remaining FE work is visual validation across imported sessions, players, money, wallet, and finished result screens.
 
 FE scope:
 - no importer UI by default
@@ -256,10 +293,7 @@ Done when:
 
 ## Suggested FE execution order
 
-1. Player profile + character self-management
-2. Withdrawals full flow
-3. Incoming balances / payout credits
-4. Admin money dashboard
-5. Finished/session results export
-6. V1 migration display validation
-7. Legacy cleanup + production hardening
+1. Legacy cleanup + production hardening.
+2. Visual validation against imported data.
+3. Optional UI/docs only if external CheesePayout/HMAC item-debit endpoint is restored.
+4. Optional finished-session UI adjustment only if BE result summary endpoint is added.
