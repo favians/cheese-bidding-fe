@@ -173,6 +173,52 @@ export interface Instance {
 
 export type SessionInstance = Instance
 
+export interface SessionAuctionResult {
+  auction_id: string
+  item_name: string
+  item_id: number
+  status: AuctionStatus
+  winning_bid: number
+  winner_member_id: string
+  discord_id: string
+  discord_name: string
+  character_name: string
+  class_name: string
+  initial_buyer_name: string
+  initial_price: number
+  closed_at: string | null
+}
+
+export interface SessionPlayerSpend {
+  member_id: string
+  discord_id: string
+  discord_name: string
+  character_name: string
+  class_name: string
+  item_count: number
+  total_spent: number
+}
+
+export interface SessionSummaryStats {
+  player_count: number
+  auction_count: number
+  sold_count: number
+  cancelled_count: number
+  open_count: number
+  total_winning_bid: number
+}
+
+export interface SessionSummary {
+  session: Session
+  stats: SessionSummaryStats
+  management_cut_percent: number
+  management_cut_amount: number
+  payout_pool: number
+  estimated_payout_each: number
+  player_spends: SessionPlayerSpend[]
+  auction_results: SessionAuctionResult[]
+}
+
 export interface Item {
   id: number
   wow_item_id: number

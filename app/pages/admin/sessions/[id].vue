@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Auction, CreateAuctionRequest, CreatePrebidRequest, Item, Prebid } from '#shared/types/api'
+import type { Auction, CreateAuctionRequest, CreatePrebidRequest, Item, Prebid, SessionAuctionResult } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
@@ -9,7 +9,7 @@ const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const store = useAdminSessionStore()
 const catalog = useCatalogStore()
-const { session, auctions, prebids, members, sessionInstances, loading, saving, error } = storeToRefs(store)
+const { session, auctions, prebids, members, sessionInstances, summary, loading, saving, error } = storeToRefs(store)
 const { instances } = storeToRefs(catalog)
 
 const showAuctionForm = ref(true)
@@ -33,17 +33,34 @@ const openPrebids = computed(() => prebids.value.filter(item => item.status === 
 const resolvedPrebids = computed(() => prebids.value.filter(item => item.status !== 'open'))
 const selectedInstances = computed(() => instances.value.filter(instance => draftInstanceIds.value.includes(instance.id)))
 const allowedItemInstanceIds = computed(() => sessionInstances.value.map(instance => instance.id))
-const totalSold = computed(() => closedAuctions.value.reduce((sum, item) => sum + item.winning_bid, 0))
+const summaryStats = computed(() => summary.value?.stats ?? null)
+const summaryAuctionResults = computed(() => summary.value?.auction_results ?? [])
+const resultAuctionRows = computed(() => summaryAuctionResults.value.length ? summaryAuctionResults.value : finishedAuctions.value.map(toSummaryAuctionResult))
+const totalSold = computed(() => summaryStats.value?.total_winning_bid ?? closedAuctions.value.reduce((sum, item) => sum + item.winning_bid, 0))
 const estimatedPayout = computed(() => {
+  if (summary.value) return summary.value.estimated_payout_each
   const playerCount = Math.max(session.value?.player_count ?? members.value.length ?? 0, 1)
   const cut = Math.max(0, Math.min(session.value?.management_cut_percent ?? 0, 100))
   return Math.floor((totalSold.value * (100 - cut)) / 100 / playerCount)
 })
 const managementCutAmount = computed(() => {
+  if (summary.value) return summary.value.management_cut_amount
   const cut = Math.max(0, Math.min(session.value?.management_cut_percent ?? 0, 100))
   return Math.floor((totalSold.value * cut) / 100)
 })
+const resultSoldCount = computed(() => summaryStats.value?.sold_count ?? closedAuctions.value.length)
+const resultCancelledCount = computed(() => summaryStats.value?.cancelled_count ?? cancelledAuctions.value.length)
+const resultOpenCount = computed(() => summaryStats.value?.open_count ?? activeAuctions.value.length)
+const resultPlayerCount = computed(() => summaryStats.value?.player_count ?? session.value?.player_count ?? members.value.length)
 const resultSpendRows = computed(() => {
+  if (summary.value) {
+    return summary.value.player_spends.map(row => ({
+      member_id: row.member_id,
+      name: row.character_name || row.discord_name || row.discord_id || row.member_id,
+      total: row.total_spent,
+      items: row.item_count
+    }))
+  }
   const rows = new Map<string, { member_id: string, name: string, total: number, items: number }>()
   for (const auction of closedAuctions.value) {
     const memberID = auction.winner_member_id || auction.current_winner_member_id
@@ -69,16 +86,16 @@ const resultSummaryText = computed(() => {
     '',
     'Winners:'
   ]
-  if (!closedAuctions.value.length) {
+  if (!resultAuctionRows.value.filter(row => row.status === 'closed').length) {
     lines.push('- No closed auctions yet')
   } else {
-    for (const auction of closedAuctions.value) {
-      lines.push(`- ${auction.item_name}: ${auction.winning_bid} — ${memberName(auction.winner_member_id || auction.current_winner_member_id)}`)
+    for (const auction of resultAuctionRows.value.filter(row => row.status === 'closed')) {
+      lines.push(`- ${auction.item_name}: ${auction.winning_bid} — ${summaryWinnerName(auction)}`)
     }
   }
-  if (cancelledAuctions.value.length || openPrebids.value.length) {
+  if (resultCancelledCount.value || openPrebids.value.length) {
     lines.push('')
-    lines.push(`Unresolved: ${cancelledAuctions.value.length} cancelled auctions, ${openPrebids.value.length} open prebids`)
+    lines.push(`Unresolved: ${resultCancelledCount.value} cancelled auctions, ${openPrebids.value.length} open prebids`)
   }
   return lines.join('\n')
 })
@@ -127,6 +144,30 @@ watch(() => prebidForm.item_name, (name) => {
 const memberName = (id: string) => {
   if (!id) return '—'
   return members.value.find(member => member.id === id)?.character_name ?? id
+}
+
+function toSummaryAuctionResult(auction: Auction): SessionAuctionResult {
+  const winnerMemberID = auction.winner_member_id || auction.current_winner_member_id
+  const member = members.value.find(row => row.id === winnerMemberID)
+  return {
+    auction_id: auction.id,
+    item_name: auction.item_name,
+    item_id: auction.item_id,
+    status: auction.status,
+    winning_bid: auction.winning_bid || auction.current_bid || 0,
+    winner_member_id: winnerMemberID,
+    discord_id: member?.discord_id ?? '',
+    discord_name: member?.discord_name ?? '',
+    character_name: member?.character_name ?? '',
+    class_name: member?.class_name ?? '',
+    initial_buyer_name: auction.initial_buyer_name,
+    initial_price: auction.initial_price,
+    closed_at: auction.closed_at
+  }
+}
+
+function summaryWinnerName(row: SessionAuctionResult) {
+  return row.character_name || row.discord_name || row.discord_id || row.winner_member_id || '—'
 }
 
 function countdown(endsAt: string) {
@@ -182,10 +223,10 @@ function exportResultCSV() {
   if (!import.meta.client) return
   const rows = [
     ['Item', 'Winner', 'Amount', 'Status'],
-    ...finishedAuctions.value.map(auction => [
+    ...resultAuctionRows.value.map(auction => [
       auction.item_name,
-      memberName(auction.winner_member_id || auction.current_winner_member_id),
-      String(auction.winning_bid || auction.current_bid || 0),
+      summaryWinnerName(auction),
+      String(auction.winning_bid || 0),
       auction.status
     ])
   ]
@@ -553,7 +594,7 @@ async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'res
           <div class="session-results-actions">
             <div>
               <h3>Finished Session Summary</h3>
-              <span>{{ closedAuctions.length }} sold · {{ cancelledAuctions.length }} cancelled · {{ openPrebids.length }} open prebids</span>
+              <span>{{ resultSoldCount }} sold · {{ resultCancelledCount }} cancelled · {{ openPrebids.length }} open prebids</span>
             </div>
             <div class="session-results-buttons">
               <UButton
@@ -590,7 +631,7 @@ async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'res
             </article>
             <article>
               <span>Players</span>
-              <strong>{{ session?.player_count || members.length }}</strong>
+              <strong>{{ resultPlayerCount }}</strong>
             </article>
           </div>
 

@@ -14,6 +14,7 @@ Implemented:
 - bid/prebid tabs
 - admin login
 - admin sessions table + session detail control panel
+- finished-session summary/copy/CSV wired to BE summary endpoint with FE fallback
 - admin player management + characters + balance drilldown + manual balance adjustment
 - admin money dashboard
 - shared admin navigation and `AdminDataTable`
@@ -52,12 +53,28 @@ player2: player2 / player123
 
 Nuxt proxies `/api/v1/**` to backend.
 
+Runtime config:
+
+```text
+NUXT_BACKEND_BASE_URL=http://localhost:8081
+NUXT_AUTH_COOKIE_NAME=cb_token
+NUXT_ADMIN_AUTH_COOKIE_NAME=cb_admin_token
+NUXT_PUBLIC_API_BASE=/api
+```
+
 Cookies:
 
 ```text
 cb_token        client JWT
 cb_admin_token  admin/internal JWT
 ```
+
+Production notes:
+
+- browser should call FE origin only
+- Nuxt/Nitro forwards `/api/v1/**` to BE through `NUXT_BACKEND_BASE_URL`
+- SSE uses `/api/v1/client/events?session_id=` through the same proxy
+- proxy/load balancer must keep SSE connections open and avoid response buffering
 
 ## Setup
 
@@ -76,7 +93,8 @@ pnpm build
 Preview:
 
 ```bash
-pnpm preview
+pnpm build
+NUXT_BACKEND_BASE_URL=http://localhost:8081 node .output/server/index.mjs
 ```
 
 ## Manual test path

@@ -214,7 +214,7 @@ Done when:
 
 Implemented:
 - admin session Finished tab shows totals, management cut, estimated payout/player, sold/cancelled/open counts
-- per-player spend summary is built from closed auctions
+- per-player spend summary uses BE `GET /api/v1/internal/sessions/{id}/summary` when available, with closed-auction FE fallback
 - Discord-ready summary copy
 - CSV result export
 
@@ -252,6 +252,10 @@ Done when:
 ## 7. Legacy cleanup + production hardening
 
 Goal: remove stale UI assumptions and make FE clean to run/deploy.
+
+Current state:
+- README documents Nuxt runtime env vars, auth cookies, BFF proxy, production preview command, and SSE/proxy notes.
+- verified: `pnpm typecheck` and `pnpm build` pass.
 
 FE scope:
 - remove stale routes/types/components no longer used
@@ -296,4 +300,4 @@ Done when:
 1. Legacy cleanup + production hardening.
 2. Visual validation against imported data.
 3. Optional UI/docs only if external CheesePayout/HMAC item-debit endpoint is restored.
-4. Optional finished-session UI adjustment only if BE result summary endpoint is added.
+4. Broader V1 visual parity pass after functional migration.

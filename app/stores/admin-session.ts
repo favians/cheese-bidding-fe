@@ -4,6 +4,7 @@ import type {
   Prebid,
   SessionInstance,
   SessionMember,
+  SessionSummary,
   CreateAuctionRequest,
   CreatePrebidRequest
 } from '#shared/types/api'
@@ -14,6 +15,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
   const prebids = ref<Prebid[]>([])
   const members = ref<SessionMember[]>([])
   const sessionInstances = ref<SessionInstance[]>([])
+  const summary = ref<SessionSummary | null>(null)
   const loading = ref(false)
   const saving = ref(false)
   const error = ref('')
@@ -45,6 +47,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     } catch {
       sessionInstances.value = []
     }
+    await loadSummary(id)
   }
 
   async function refresh(id: string) {
@@ -56,8 +59,18 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
       ])
       auctions.value = a ?? []
       prebids.value = p ?? []
+      await loadSummary(id)
     } catch {
       // keep last good state on a transient refresh failure
+    }
+  }
+
+  async function loadSummary(id: string) {
+    const { request } = useApi()
+    try {
+      summary.value = await request<SessionSummary>(`/api/v1/internal/sessions/${id}/summary`)
+    } catch {
+      summary.value = null
     }
   }
 
@@ -71,6 +84,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
         body: payload
       })
       auctions.value = [created, ...auctions.value]
+      await loadSummary(sessionId)
       return created
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Could not open auction'
@@ -90,6 +104,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
         body: payload
       })
       prebids.value = [created, ...prebids.value]
+      await loadSummary(sessionId)
       return created
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Could not create prebid'
@@ -105,6 +120,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     try {
       const updated = await request<Auction>(`/api/v1/internal/auctions/${id}/${action}`, { method: 'POST' })
       patchAuction(updated)
+      await loadSummary(updated.session_id)
       return updated
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : `Auction ${action} failed`
@@ -124,6 +140,8 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
       // resolving spawns a new auction; pull the fresh auction list
       if (action === 'resolve') {
         await refresh(sessionId)
+      } else {
+        await loadSummary(sessionId)
       }
       return updated
     } catch (cause) {
@@ -169,11 +187,13 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     prebids,
     members,
     sessionInstances,
+    summary,
     loading,
     saving,
     error,
     load,
     refresh,
+    loadSummary,
     createAuction,
     createPrebid,
     auctionAction,
