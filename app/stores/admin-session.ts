@@ -112,7 +112,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     }
   }
 
-  async function prebidAction(id: string, action: 'resolve' | 'cancel', sessionId: string) {
+  async function prebidAction(id: string, action: 'resolve' | 'cancel' | 'not-dropped' | 'delete-last-bid', sessionId: string) {
     const { request } = useApi()
     error.value = ''
     try {

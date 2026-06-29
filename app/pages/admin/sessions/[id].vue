@@ -566,6 +566,22 @@ async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'res
               />
               <UButton
                 size="xs"
+                color="neutral"
+                variant="soft"
+                icon="i-lucide-undo-2"
+                label="Undo Bid"
+                @click="store.prebidAction(item.id, 'delete-last-bid', sessionId)"
+              />
+              <UButton
+                size="xs"
+                color="warning"
+                variant="soft"
+                icon="i-lucide-package-x"
+                label="Not Dropped"
+                @click="store.prebidAction(item.id, 'not-dropped', sessionId)"
+              />
+              <UButton
+                size="xs"
                 color="error"
                 variant="soft"
                 icon="i-lucide-x"

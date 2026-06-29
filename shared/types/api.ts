@@ -100,7 +100,7 @@ export interface SessionMember {
 }
 
 export type AuctionStatus = 'active' | 'closed' | 'cancelled'
-export type PrebidStatus = 'open' | 'resolved' | 'cancelled'
+export type PrebidStatus = 'open' | 'resolved' | 'cancelled' | 'not_dropped'
 
 export interface Auction {
   id: string
