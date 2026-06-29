@@ -191,6 +191,11 @@ export interface Balance {
   balance_amount: string
 }
 
+export interface BalanceAdjustmentRequest {
+  amount: string
+  reason: string
+}
+
 export interface LedgerEntry {
   id: string
   source: string

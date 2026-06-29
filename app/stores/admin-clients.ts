@@ -4,6 +4,7 @@ import type {
   Pagination,
   ClientCharacter,
   SaveClientCharacterRequest,
+  BalanceAdjustmentRequest,
   Balance,
   LedgerEntry,
   IncomingBalance,
@@ -189,6 +190,26 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     }
   }
 
+  async function adjustBalance(clientId: number, payload: BalanceAdjustmentRequest) {
+    const { request } = useApi()
+    saving.value = true
+    error.value = ''
+    try {
+      const balance = await request<Balance>(`/api/v1/internal/clients/${clientId}/balance-adjustments`, {
+        method: 'POST',
+        body: payload
+      })
+      balancesByClient.value[clientId] = balance
+      await loadBalanceDetail(clientId)
+      return balance
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Could not adjust balance'
+      throw cause
+    } finally {
+      saving.value = false
+    }
+  }
+
   function patchCharacter(clientId: number, row: ClientCharacter) {
     const rows = charactersByClient.value[clientId] ?? []
     const i = rows.findIndex(character => character.id === row.id)
@@ -224,6 +245,7 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     createCharacter,
     updateCharacter,
     deleteCharacter,
-    loadBalanceDetail
+    loadBalanceDetail,
+    adjustBalance
   }
 })

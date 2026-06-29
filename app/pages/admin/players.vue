@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminCreateClientRequest, ClientAdmin, ClientCharacter, SaveClientCharacterRequest } from '#shared/types/api'
+import type { AdminCreateClientRequest, BalanceAdjustmentRequest, ClientAdmin, ClientCharacter, SaveClientCharacterRequest } from '#shared/types/api'
 import { wowClasses } from '~/data/wowClasses'
 
 definePageMeta({ middleware: 'admin' })
@@ -26,6 +26,7 @@ const form = reactive<AdminCreateClientRequest>({ username: '', password: '', di
 const expandedClientId = ref<number | null>(null)
 const balanceClientId = ref<number | null>(null)
 const editingCharacterId = ref<number | null>(null)
+const adjustmentForm = reactive<BalanceAdjustmentRequest>({ amount: '', reason: '' })
 const characterForm = reactive<SaveClientCharacterRequest>({
   character_name: '',
   server: 'Whitemane',
@@ -142,9 +143,20 @@ async function toggleCharacters(clientId: number) {
 
 async function toggleBalance(clientId: number) {
   balanceClientId.value = balanceClientId.value === clientId ? null : clientId
+  adjustmentForm.amount = ''
+  adjustmentForm.reason = ''
   if (balanceClientId.value && !balancesByClient.value[clientId]) {
     await store.loadBalanceDetail(clientId)
   }
+}
+
+async function submitBalanceAdjustment(clientId: number) {
+  const amount = adjustmentForm.amount.trim()
+  const reason = adjustmentForm.reason.trim()
+  if (!amount || !reason || Number(amount) === 0) return
+  await store.adjustBalance(clientId, { amount, reason })
+  adjustmentForm.amount = ''
+  adjustmentForm.reason = ''
 }
 
 function resetCharacterForm() {
@@ -469,6 +481,31 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
                 @click="store.loadBalanceDetail(c.id)"
               />
             </div>
+
+            <form
+              class="admin-balance-adjustment"
+              @submit.prevent="submitBalanceAdjustment(c.id)"
+            >
+              <UInput
+                v-model="adjustmentForm.amount"
+                placeholder="+100 or -50"
+                aria-label="Adjustment amount"
+              />
+              <UInput
+                v-model="adjustmentForm.reason"
+                placeholder="Reason"
+                aria-label="Adjustment reason"
+              />
+              <UButton
+                type="submit"
+                color="primary"
+                variant="soft"
+                icon="i-lucide-circle-dollar-sign"
+                label="Adjust"
+                :loading="saving"
+                :disabled="!adjustmentForm.amount.trim() || !adjustmentForm.reason.trim()"
+              />
+            </form>
 
             <div class="admin-balance-grid">
               <section>

@@ -439,6 +439,17 @@ body::after {
   font-size: 1.5rem;
 }
 
+.admin-balance-adjustment {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.6fr) minmax(180px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
 .admin-balance-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -723,6 +734,10 @@ body::after {
   }
 
   .admin-character-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-balance-adjustment {
     grid-template-columns: 1fr;
   }
 
