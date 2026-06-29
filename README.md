@@ -1,171 +1,97 @@
 # CheeseBidding FE
 
-Nuxt frontend for CheeseBidding V2. This repo is the separated frontend replacement for the old `cheesebid` monolith UI.
+Separated Nuxt frontend for CheeseBidding V2.
 
-## Current Status
+## Status
 
-Implemented screens/features:
+Implemented:
 
 - client login
-- client profile
-- client characters
+- player profile + password change + character CRUD
+- player wallet + ledger + withdrawals
+- play join-by-code
+- live auction/prebid bidding with SSE updates
+- bid/prebid tabs
 - admin login
-- admin dashboard
-- admin sessions
-- session detail/play screens
-- auction flow integration
-- item catalog picker integration
-
-Relevant current files:
-
-- `app/pages/index.vue` — client login
-- `app/pages/admin/login.vue` — admin login
-- `app/pages/admin/index.vue` — admin dashboard
-- `app/pages/admin/sessions/[id].vue` — admin session detail
-- `app/pages/play/[id].vue` — client play/session page
-- `app/components/ItemPicker.vue` — item catalog picker
-- `app/stores/catalog.ts` — item catalog API store
-- `app/stores/admin-auth.ts` — admin auth store
-- `app/stores/auth.ts` — client auth store
-- `server/api/v1/[...path].ts` — backend API proxy
+- admin sessions table + session detail control panel
+- admin player management + characters + balance drilldown + manual balance adjustment
+- admin money dashboard
+- shared admin navigation and `AdminDataTable`
 
 ## Local URLs
 
-Frontend:
-
 ```text
-http://localhost:3000
+FE: http://localhost:3000
+BE: http://localhost:8081
 ```
 
-Client login page:
+Pages:
 
 ```text
-http://localhost:3000/
+/                    client login
+/profile             player profile
+/wallet              player wallet
+/play                join by code
+/play/[id]           live bidding
+/admin/login         admin login
+/admin               sessions
+/admin/sessions/[id] session control
+/admin/players       player management
+/admin/money         money dashboard
 ```
 
-Admin login page:
+## Local accounts
 
 ```text
-http://localhost:3000/admin/login
-```
-
-Admin dashboard:
-
-```text
-http://localhost:3000/admin
-```
-
-Backend expected by FE:
-
-```text
-http://localhost:8081
-```
-
-## Local Test Accounts
-
-Client login:
-
-```text
-username: admin
-password: admin
-```
-
-Admin login:
-
-```text
-username: admin
-password: admin
+admin:  admin / admin123
+player: player / player123
+player2: player2 / player123
 ```
 
 ## Environment
 
-Nuxt runtime config uses backend base URL from config/env. For local dev, point backend to:
+Nuxt proxies `/api/v1/**` to backend.
 
-```text
-http://localhost:8081
-```
-
-Auth cookies:
+Cookies:
 
 ```text
 cb_token        client JWT
 cb_admin_token  admin/internal JWT
 ```
 
-Internal backend routes use `cb_admin_token`; client backend routes use `cb_token`.
-
 ## Setup
-
-Install dependencies:
 
 ```bash
 pnpm install
-```
-
-Start dev server:
-
-```bash
 pnpm dev
 ```
 
 Build:
 
 ```bash
+pnpm typecheck
 pnpm build
 ```
 
-Preview production build:
+Preview:
 
 ```bash
 pnpm preview
 ```
 
-## Item Catalog
+## Manual test path
 
-Item catalog API is available through the proxy:
-
-Client:
-
-```text
-GET /api/v1/client/items
-GET /api/v1/client/items/{id}
-```
-
-Admin:
-
-```text
-GET    /api/v1/internal/items
-POST   /api/v1/internal/items
-GET    /api/v1/internal/items/{id}
-DELETE /api/v1/internal/items/{id}
-```
-
-Use item picker from:
-
-```text
-app/components/ItemPicker.vue
-```
-
-Store:
-
-```text
-app/stores/catalog.ts
-```
-
-## Verification
-
-Run frontend checks:
-
-```bash
-pnpm typecheck
-pnpm build
-```
-
-Use browser test path:
-
-1. Start backend on `localhost:8081`.
+1. Start BE on `localhost:8081`.
 2. Start FE on `localhost:3000`.
-3. Open `/admin/login`.
-4. Login with `admin/admin`.
-5. Open admin session screen.
-6. Test item picker and auction creation.
+3. Login admin at `/admin/login`.
+4. Create/open session.
+5. Login player at `/`, join with code at `/play`.
+6. Bid/prebid live.
+7. Close auction in admin.
+8. Verify wallet ledger debit/refund behavior.
+
+## Styling rules
+
+- No inline CSS.
+- Page/component styles go through existing CSS files under `app/assets/css`.
+- Reuse `AdminDataTable` for admin tables.
