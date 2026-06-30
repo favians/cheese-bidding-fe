@@ -75,7 +75,7 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
   async function loadBalances(page = 1) {
     const { requestPaged } = useApi()
     const { data, pagination } = await requestPaged<Balance[]>('/api/v1/internal/balances', {
-      query: { page: String(page), limit: '20' }
+      query: { page: String(page), limit: '10' }
     })
     balances.value = data ?? []
     balancePagination.value = pagination
@@ -83,7 +83,7 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
 
   async function loadLedger(page = 1, source = 'all', ledgerType: 'all' | 'credit' | 'debit' = 'all') {
     const { requestPaged } = useApi()
-    const query: Record<string, string> = { page: String(page), limit: '20' }
+    const query: Record<string, string> = { page: String(page), limit: '10' }
     if (source && source !== 'all') query.source = source
     if (ledgerType !== 'all') query.type = ledgerType
     const { data, pagination } = await requestPaged<LedgerEntry[]>('/api/v1/internal/balance/ledger', { query })
@@ -93,7 +93,7 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
 
   async function loadIncoming(page = 1, status: 'all' | IncomingStatus = 'all') {
     const { requestPaged } = useApi()
-    const query: Record<string, string> = { page: String(page), limit: '20' }
+    const query: Record<string, string> = { page: String(page), limit: '10' }
     if (status !== 'all') query.status = status
     const { data, pagination } = await requestPaged<IncomingBalance[]>('/api/v1/internal/incoming-balances', { query })
     incoming.value = data ?? []
@@ -102,7 +102,7 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
 
   async function loadWithdrawals(page = 1, status: 'all' | WithdrawalStatus = 'all') {
     const { requestPaged } = useApi()
-    const query: Record<string, string> = { page: String(page), limit: '20' }
+    const query: Record<string, string> = { page: String(page), limit: '10' }
     if (status !== 'all') query.status = status
     const { data, pagination } = await requestPaged<Withdrawal[]>('/api/v1/internal/withdrawals', { query })
     withdrawals.value = data ?? []

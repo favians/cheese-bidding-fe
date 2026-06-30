@@ -46,7 +46,7 @@ export const useWalletStore = defineStore('wallet', () => {
   async function loadLedger(page = 1) {
     const { requestPaged } = useApi()
     const { data, pagination } = await requestPaged<LedgerEntry[]>('/api/v1/client/balance/ledger', {
-      query: { page: String(page), limit: '20' }
+      query: { page: String(page), limit: '10' }
     })
     ledger.value = data ?? []
     ledgerPagination.value = pagination
@@ -55,7 +55,7 @@ export const useWalletStore = defineStore('wallet', () => {
   async function loadWithdrawals(page = 1) {
     const { requestPaged } = useApi()
     const { data, pagination } = await requestPaged<Withdrawal[]>('/api/v1/client/withdrawals', {
-      query: { page: String(page), limit: '20' }
+      query: { page: String(page), limit: '10' }
     })
     withdrawals.value = data ?? []
     withdrawalPagination.value = pagination
