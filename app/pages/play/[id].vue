@@ -321,14 +321,6 @@ function canCustomBid(item: Auction | Prebid) {
             </div>
 
             <div class="bid-controls prebid-controls">
-              <UButton
-                class="min-button"
-                color="primary"
-                icon="i-lucide-gavel"
-                label="Min"
-                :loading="submitting"
-                @click="bidPrebid(item, item.next_min_bid)"
-              />
               <label class="bid-input">
                 <span>Your Prebid</span>
                 <UInput
@@ -339,11 +331,10 @@ function canCustomBid(item: Auction | Prebid) {
                 />
               </label>
               <UButton
-                color="neutral"
+                color="primary"
                 variant="solid"
-                label="Bid"
+                label="Outbid"
                 :loading="submitting"
-                :disabled="!canCustomBid(item)"
                 @click="bidPrebid(item, bidInputs[item.id] ?? item.next_min_bid)"
               />
             </div>

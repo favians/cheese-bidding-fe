@@ -20,6 +20,7 @@ Done since this roadmap was first written (do not re-scope as pending):
 - **Profile** (`/profile`): password change, character CRUD, class/faction/spec selectors, inactive-account guard messaging, wallet shortcut.
 - **Admin money** (`/admin/money`): maintenance toggle, gold rate, queue incoming, balances/ledger/incoming/withdrawal `AdminDataTable` views, filters/search, confirm/cancel/approve/reject/paid actions with confirmations.
 - Backend pairs the auction **close→debit / reopen→refund** spend side; FE bidding results already reflect winners.
+- Player live bidding `/play/[id]` keeps V1 auction-card structure; Prebid tab now matches V1 control shape (input + Outbid, no extra Min button).
 
 Still open V1-parity gaps not captured by the 7 modules below:
 - no big FE module gap known; remaining work is polish/verification.

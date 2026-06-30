@@ -135,6 +135,10 @@
   grid-template-columns: minmax(250px, 1.25fr) minmax(140px, 0.45fr) 112px minmax(320px, 1fr);
 }
 
+.prebid-card .timer-cell {
+  align-self: center;
+}
+
 .auction-card.winning {
   border-color: rgba(34, 197, 94, 0.28);
   background:
@@ -174,10 +178,15 @@
 }
 
 .item-icon img {
+  grid-area: 1 / 1;
   width: 100%;
   height: 100%;
   border-radius: 8px;
   object-fit: cover;
+}
+
+.item-icon img + span {
+  display: none;
 }
 
 .loot-text {
@@ -285,6 +294,15 @@
   color: #fde68a;
 }
 
+.status.closed {
+  color: #f1e8d0;
+}
+
+.status.cancelled,
+.status.not_dropped {
+  color: #ffb4a7;
+}
+
 .bid-controls {
   display: grid;
   grid-template-columns: 70px minmax(95px, 1fr) 72px;
@@ -293,7 +311,20 @@
 }
 
 .bid-controls.prebid-controls {
-  grid-template-columns: 70px minmax(160px, 1fr) 72px;
+  grid-template-columns: minmax(220px, 1fr) 112px;
+  align-items: center;
+  gap: 10px;
+  justify-self: stretch;
+}
+
+.bid-controls.prebid-controls .bid-input {
+  min-width: 0;
+}
+
+.bid-controls.prebid-controls button {
+  min-width: 0;
+  padding-inline: 10px;
+  white-space: nowrap;
 }
 
 .min-button {
@@ -366,7 +397,11 @@
 @media (max-width: 1180px) {
   .auction-card,
   .auction-card.prebid-card {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(230px, 1fr) minmax(130px, 0.6fr) 120px;
+  }
+
+  .bid-controls {
+    grid-column: 1 / -1;
   }
 }
 
@@ -390,5 +425,10 @@
   .bid-controls,
   .bid-controls.prebid-controls {
     grid-template-columns: 1fr;
+  }
+
+  .item-name,
+  .loot-sub {
+    white-space: normal;
   }
 }
