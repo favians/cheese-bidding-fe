@@ -811,11 +811,24 @@
   gap: 7px;
 }
 
+.session-card-icon-button {
+  width: 38px;
+  min-width: 38px;
+  justify-content: center;
+}
+
 .session-card-result {
   justify-items: end;
   color: rgba(255, 247, 237, 0.76);
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.session-card-result small {
+  color: rgba(255, 247, 237, 0.58);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: none;
 }
 
 .session-card-result-actions {

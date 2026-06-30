@@ -4,6 +4,7 @@ import type { Auction, CreateAuctionRequest, CreatePrebidRequest, Item, Prebid, 
 definePageMeta({ middleware: 'admin' })
 
 type BoardTab = 'active' | 'prebid' | 'results'
+type PrebidAction = 'resolve' | 'cancel' | 'not-dropped' | 'delete-last-bid'
 
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
@@ -307,6 +308,29 @@ async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'res
     return
   }
   await store.auctionAction(item.id, action)
+}
+
+function prebidActionMessage(item: Prebid, action: PrebidAction) {
+  if (action === 'resolve') {
+    return `Start live auction from ${item.item_name}?\n\nCurrent top prebid becomes the opening bid.`
+  }
+  if (action === 'delete-last-bid') {
+    return `Delete latest prebid for ${item.item_name}?\n\nOnly the newest prebid will be removed.`
+  }
+  if (action === 'not-dropped') {
+    return `Mark ${item.item_name} as not dropped?`
+  }
+  return `Cancel prebid for ${item.item_name}?`
+}
+
+async function runPrebidAction(item: Prebid, action: PrebidAction) {
+  if (action === 'delete-last-bid' && item.bid_count <= 1) {
+    return
+  }
+  if (import.meta.client && !window.confirm(prebidActionMessage(item, action))) {
+    return
+  }
+  await store.prebidAction(item.id, action, sessionId.value)
 }
 </script>
 
@@ -740,44 +764,58 @@ async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'res
               v-else-if="item.status === 'open'"
               class="session-card-actions"
             >
-              <UButton
-                size="xs"
-                color="primary"
-                variant="soft"
-                icon="i-lucide-arrow-up-right"
-                label="Resolve"
-                @click="store.prebidAction(item.id, 'resolve', sessionId)"
-              />
-              <UButton
-                size="xs"
-                color="neutral"
-                variant="soft"
-                icon="i-lucide-undo-2"
-                label="Undo Bid"
-                @click="store.prebidAction(item.id, 'delete-last-bid', sessionId)"
-              />
-              <UButton
-                size="xs"
-                color="warning"
-                variant="soft"
-                icon="i-lucide-package-x"
-                label="Not Dropped"
-                @click="store.prebidAction(item.id, 'not-dropped', sessionId)"
-              />
-              <UButton
-                size="xs"
-                color="error"
-                variant="soft"
-                icon="i-lucide-x"
-                label="Cancel"
-                @click="store.prebidAction(item.id, 'cancel', sessionId)"
-              />
+              <UTooltip text="Start live auction">
+                <UButton
+                  size="xs"
+                  color="primary"
+                  variant="soft"
+                  icon="i-lucide-play"
+                  aria-label="Start live auction"
+                  class="session-card-icon-button"
+                  @click="runPrebidAction(item, 'resolve')"
+                />
+              </UTooltip>
+              <UTooltip :text="item.bid_count > 1 ? 'Delete latest prebid' : 'Need at least 2 prebids'">
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="soft"
+                  icon="i-lucide-list-x"
+                  aria-label="Delete latest prebid"
+                  class="session-card-icon-button"
+                  :disabled="item.bid_count <= 1"
+                  @click="runPrebidAction(item, 'delete-last-bid')"
+                />
+              </UTooltip>
+              <UTooltip text="Mark not dropped">
+                <UButton
+                  size="xs"
+                  color="warning"
+                  variant="soft"
+                  icon="i-lucide-package-x"
+                  aria-label="Mark not dropped"
+                  class="session-card-icon-button"
+                  @click="runPrebidAction(item, 'not-dropped')"
+                />
+              </UTooltip>
+              <UTooltip text="Cancel prebid">
+                <UButton
+                  size="xs"
+                  color="error"
+                  variant="soft"
+                  icon="i-lucide-trash-2"
+                  aria-label="Cancel prebid"
+                  class="session-card-icon-button"
+                  @click="runPrebidAction(item, 'cancel')"
+                />
+              </UTooltip>
             </div>
             <div
               v-else
               class="session-card-result"
             >
               <span v-if="'winning_bid' in item && item.winning_bid">Sold {{ item.winning_bid }}</span>
+              <small v-if="'winner_member_id' in item && item.winner_member_id">to {{ memberName(item.winner_member_id) }}</small>
               <span v-else>{{ item.status }}</span>
               <div
                 v-if="item.status === 'closed'"
