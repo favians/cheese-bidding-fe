@@ -22,6 +22,7 @@ Separated Nuxt FE for CheeseBid V2. V1 monolith migration is functionally comple
 - imported-data guards tolerate null/invalid dates and timers
 - ended-session UI disables new auction/prebid, live close/reset, and player bidding
 - cancel/refund cleanup remains available
+- admin money and player wallet lists are paginated; FE no longer fetches full money ledger/incoming/withdrawal tables
 - CSS rule remains: no inline CSS; use stylesheet files
 
 ## Remaining work

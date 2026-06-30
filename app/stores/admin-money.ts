@@ -5,7 +5,9 @@ import type {
   Withdrawal,
   CreateIncomingRequest,
   WithdrawalStatus,
-  SettingResponse
+  SettingResponse,
+  Pagination,
+  IncomingStatus
 } from '#shared/types/api'
 
 const KEY_MAINTENANCE = 'withdrawals_maintenance'
@@ -16,33 +18,46 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
   const ledger = ref<LedgerEntry[]>([])
   const incoming = ref<IncomingBalance[]>([])
   const withdrawals = ref<Withdrawal[]>([])
+  const balancePagination = ref<Pagination | null>(null)
+  const ledgerPagination = ref<Pagination | null>(null)
+  const incomingPagination = ref<Pagination | null>(null)
+  const withdrawalPagination = ref<Pagination | null>(null)
   const maintenance = ref(true)
   const goldRate = ref('0')
   const loading = ref(false)
   const saving = ref(false)
   const error = ref('')
 
-  async function load() {
-    const { request } = useApi()
+  async function load(params: {
+    balancePage?: number
+    ledgerPage?: number
+    incomingPage?: number
+    withdrawalPage?: number
+    ledgerSource?: string
+    ledgerType?: 'all' | 'credit' | 'debit'
+    incomingStatus?: 'all' | IncomingStatus
+    withdrawalStatus?: 'all' | WithdrawalStatus
+  } = {}) {
     loading.value = true
     error.value = ''
     try {
-      const [bal, led, inc, wd] = await Promise.all([
-        request<Balance[]>('/api/v1/internal/balances?limit=100'),
-        request<LedgerEntry[]>('/api/v1/internal/balance/ledger?limit=100'),
-        request<IncomingBalance[]>('/api/v1/internal/incoming-balances'),
-        request<Withdrawal[]>('/api/v1/internal/withdrawals')
+      await Promise.all([
+        loadBalances(params.balancePage ?? balancePagination.value?.page ?? 1),
+        loadLedger(params.ledgerPage ?? ledgerPagination.value?.page ?? 1, params.ledgerSource, params.ledgerType),
+        loadIncoming(params.incomingPage ?? incomingPagination.value?.page ?? 1, params.incomingStatus),
+        loadWithdrawals(params.withdrawalPage ?? withdrawalPagination.value?.page ?? 1, params.withdrawalStatus)
       ])
-      balances.value = bal ?? []
-      ledger.value = led ?? []
-      incoming.value = inc ?? []
-      withdrawals.value = wd ?? []
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Failed to load money'
       throw cause
     } finally {
       loading.value = false
     }
+    await loadSettings()
+  }
+
+  async function loadSettings() {
+    const { request } = useApi()
     try {
       const m = await request<SettingResponse>(`/api/v1/internal/settings/${KEY_MAINTENANCE}`)
       maintenance.value = m?.value === 'true'
@@ -57,13 +72,50 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
     }
   }
 
+  async function loadBalances(page = 1) {
+    const { requestPaged } = useApi()
+    const { data, pagination } = await requestPaged<Balance[]>('/api/v1/internal/balances', {
+      query: { page: String(page), limit: '20' }
+    })
+    balances.value = data ?? []
+    balancePagination.value = pagination
+  }
+
+  async function loadLedger(page = 1, source = 'all', ledgerType: 'all' | 'credit' | 'debit' = 'all') {
+    const { requestPaged } = useApi()
+    const query: Record<string, string> = { page: String(page), limit: '20' }
+    if (source && source !== 'all') query.source = source
+    if (ledgerType !== 'all') query.type = ledgerType
+    const { data, pagination } = await requestPaged<LedgerEntry[]>('/api/v1/internal/balance/ledger', { query })
+    ledger.value = data ?? []
+    ledgerPagination.value = pagination
+  }
+
+  async function loadIncoming(page = 1, status: 'all' | IncomingStatus = 'all') {
+    const { requestPaged } = useApi()
+    const query: Record<string, string> = { page: String(page), limit: '20' }
+    if (status !== 'all') query.status = status
+    const { data, pagination } = await requestPaged<IncomingBalance[]>('/api/v1/internal/incoming-balances', { query })
+    incoming.value = data ?? []
+    incomingPagination.value = pagination
+  }
+
+  async function loadWithdrawals(page = 1, status: 'all' | WithdrawalStatus = 'all') {
+    const { requestPaged } = useApi()
+    const query: Record<string, string> = { page: String(page), limit: '20' }
+    if (status !== 'all') query.status = status
+    const { data, pagination } = await requestPaged<Withdrawal[]>('/api/v1/internal/withdrawals', { query })
+    withdrawals.value = data ?? []
+    withdrawalPagination.value = pagination
+  }
+
   async function createIncoming(payload: CreateIncomingRequest) {
     const { request } = useApi()
     saving.value = true
     error.value = ''
     try {
       const row = await request<IncomingBalance>('/api/v1/internal/incoming-balances', { method: 'POST', body: payload })
-      incoming.value = [row, ...incoming.value]
+      patchOrPrepend(incoming, row)
       await loadMoneyTables()
       return row
     } catch (cause) {
@@ -120,13 +172,12 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
   }
 
   async function loadMoneyTables() {
-    const { request } = useApi()
-    const [bal, led] = await Promise.all([
-      request<Balance[]>('/api/v1/internal/balances?limit=100'),
-      request<LedgerEntry[]>('/api/v1/internal/balance/ledger?limit=100')
+    await Promise.all([
+      loadBalances(balancePagination.value?.page ?? 1),
+      loadLedger(ledgerPagination.value?.page ?? 1),
+      loadIncoming(incomingPagination.value?.page ?? 1),
+      loadWithdrawals(withdrawalPagination.value?.page ?? 1)
     ])
-    balances.value = bal ?? []
-    ledger.value = led ?? []
   }
 
   function patch<T extends { id: string }>(list: Ref<T[]>, row: T) {
@@ -134,17 +185,31 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
     if (i >= 0) list.value[i] = row
   }
 
+  function patchOrPrepend<T extends { id: string }>(list: Ref<T[]>, row: T) {
+    const i = list.value.findIndex(x => x.id === row.id)
+    if (i >= 0) list.value[i] = row
+    else list.value = [row, ...list.value]
+  }
+
   return {
     balances,
     ledger,
     incoming,
     withdrawals,
+    balancePagination,
+    ledgerPagination,
+    incomingPagination,
+    withdrawalPagination,
     maintenance,
     goldRate,
     loading,
     saving,
     error,
     load,
+    loadBalances,
+    loadLedger,
+    loadIncoming,
+    loadWithdrawals,
     createIncoming,
     settleIncoming,
     updateWithdrawal,

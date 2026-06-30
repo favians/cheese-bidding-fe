@@ -1,10 +1,24 @@
 <script setup lang="ts">
-import type { Balance, CreateIncomingRequest, IncomingBalance, IncomingStatus, LedgerEntry, Withdrawal, WithdrawalStatus } from '#shared/types/api'
+import type { Balance, CreateIncomingRequest, IncomingBalance, IncomingStatus, LedgerEntry, Pagination, Withdrawal, WithdrawalStatus } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
 const store = useAdminMoneyStore()
-const { balances, ledger, incoming, withdrawals, maintenance, goldRate, loading, saving, error } = storeToRefs(store)
+const {
+  balances,
+  ledger,
+  incoming,
+  withdrawals,
+  balancePagination,
+  ledgerPagination,
+  incomingPagination,
+  withdrawalPagination,
+  maintenance,
+  goldRate,
+  loading,
+  saving,
+  error
+} = storeToRefs(store)
 
 const form = reactive<CreateIncomingRequest>({ client_id: 0, amount: 0, week_id: '', note: '' })
 const rateDraft = ref('0')
@@ -17,6 +31,7 @@ const moneySearch = ref('')
 const incomingStatusItems = ['all', 'pending', 'confirmed', 'cancelled']
 const withdrawalStatusItems = ['all', 'pending', 'approved', 'rejected', 'paid']
 const ledgerTypeItems = ['all', 'credit', 'debit']
+const ledgerSourceItems = ['all', 'incoming_balance', 'withdrawal', 'withdrawal_refund', 'auction_win', 'auction_refund', 'admin_adjustment', 'cheesepayout_item']
 const externalIncomingPayload = `{
   "discordId": "123456789012345678",
   "weekId": "2026-W26",
@@ -62,8 +77,20 @@ const withdrawalColumns = [
 ]
 
 onMounted(async () => {
-  await store.load()
+  await loadMoney()
   rateDraft.value = goldRate.value
+})
+
+watch([ledgerSourceFilter, ledgerTypeFilter], () => {
+  store.loadLedger(1, ledgerSourceFilter.value, ledgerTypeFilter.value)
+})
+
+watch(incomingStatusFilter, () => {
+  store.loadIncoming(1, incomingStatusFilter.value)
+})
+
+watch(withdrawalStatusFilter, () => {
+  store.loadWithdrawals(1, withdrawalStatusFilter.value)
 })
 
 const incomingStatusColor: Record<IncomingStatus, 'warning' | 'success' | 'neutral'> = {
@@ -79,19 +106,12 @@ const statusColor: Record<WithdrawalStatus, 'warning' | 'info' | 'error' | 'succ
   paid: 'success'
 }
 
-const ledgerSources = computed(() => {
-  const sources = new Set(ledger.value.map(row => row.source).filter(Boolean))
-  return ['all', ...Array.from(sources).sort()]
-})
-
 const filteredBalances = computed(() => {
   return balances.value.filter(row => rowMatchesMoneySearch(row.client_id, row.balance_amount))
 })
 
 const filteredLedger = computed(() => {
   return ledger.value.filter(row => {
-    if (ledgerTypeFilter.value !== 'all' && row.type !== ledgerTypeFilter.value) return false
-    if (ledgerSourceFilter.value !== 'all' && row.source !== ledgerSourceFilter.value) return false
     return rowMatchesMoneySearch(row.client_id, row.source, row.type, row.amount, row.balance_after, row.note, row.session_snapshot)
   })
 })
@@ -105,17 +125,46 @@ function nextStates(status: WithdrawalStatus): WithdrawalStatus[] {
 
 const filteredIncoming = computed(() => {
   return incoming.value.filter(row => {
-    if (incomingStatusFilter.value !== 'all' && row.status !== incomingStatusFilter.value) return false
     return rowMatchesMoneySearch(row.client_id, row.amount, row.week_id, row.note)
   })
 })
 
 const filteredWithdrawals = computed(() => {
   return withdrawals.value.filter(row => {
-    if (withdrawalStatusFilter.value !== 'all' && row.status !== withdrawalStatusFilter.value) return false
     return rowMatchesMoneySearch(row.client_id, row.amount, row.payment_method, row.note, row.admin_note)
   })
 })
+
+async function loadMoney() {
+  await store.load({
+    ledgerSource: ledgerSourceFilter.value,
+    ledgerType: ledgerTypeFilter.value,
+    incomingStatus: incomingStatusFilter.value,
+    withdrawalStatus: withdrawalStatusFilter.value
+  })
+}
+
+function pageLabel(meta: Pagination | null) {
+  if (!meta) return 'Page 1'
+  if (meta.page_total > 0) return `Page ${meta.page} / ${meta.page_total}`
+  return `Page ${meta.page}`
+}
+
+function loadBalancePage(page: number) {
+  return store.loadBalances(page)
+}
+
+function loadLedgerPage(page: number) {
+  return store.loadLedger(page, ledgerSourceFilter.value, ledgerTypeFilter.value)
+}
+
+function loadIncomingPage(page: number) {
+  return store.loadIncoming(page, incomingStatusFilter.value)
+}
+
+function loadWithdrawalPage(page: number) {
+  return store.loadWithdrawals(page, withdrawalStatusFilter.value)
+}
 
 function rowMatchesMoneySearch(...values: Array<string | number | undefined>) {
   const needle = moneySearch.value.trim().toLowerCase()
@@ -174,6 +223,7 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
     // store exposes error
   }
 }
+
 </script>
 
 <template>
@@ -329,7 +379,7 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           <div class="admin-money-table-header">
             <div>
               <h2>Client balances</h2>
-              <span>{{ filteredBalances.length }} shown / {{ balances.length }} total</span>
+              <span>{{ filteredBalances.length }} shown on this page</span>
             </div>
             <div class="admin-money-filters">
               <UInput
@@ -350,6 +400,30 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           </span>
         </template>
       </AdminDataTable>
+      <div
+        v-if="balancePagination"
+        class="admin-money-pagination"
+      >
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-lucide-chevron-left"
+          label="Prev"
+          :disabled="!balancePagination.prev_page || loading"
+          @click="loadBalancePage(balancePagination.page - 1)"
+        />
+        <span>{{ pageLabel(balancePagination) }}</span>
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          trailing-icon="i-lucide-chevron-right"
+          label="Next"
+          :disabled="!balancePagination.next_page || loading"
+          @click="loadBalancePage(balancePagination.page + 1)"
+        />
+      </div>
     </section>
 
     <!-- Ledger -->
@@ -363,12 +437,12 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           <div class="admin-money-table-header">
             <div>
               <h2>Balance ledger</h2>
-              <span>{{ filteredLedger.length }} shown / {{ ledger.length }} total</span>
+              <span>{{ filteredLedger.length }} shown on this page</span>
             </div>
             <div class="admin-money-filters">
               <USelect
                 v-model="ledgerSourceFilter"
-                :items="ledgerSources"
+                :items="ledgerSourceItems"
               />
               <USelect
                 v-model="ledgerTypeFilter"
@@ -407,6 +481,30 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           {{ formatDate((row as LedgerEntry).created_at) }}
         </template>
       </AdminDataTable>
+      <div
+        v-if="ledgerPagination"
+        class="admin-money-pagination"
+      >
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-lucide-chevron-left"
+          label="Prev"
+          :disabled="!ledgerPagination.prev_page || loading"
+          @click="loadLedgerPage(ledgerPagination.page - 1)"
+        />
+        <span>{{ pageLabel(ledgerPagination) }}</span>
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          trailing-icon="i-lucide-chevron-right"
+          label="Next"
+          :disabled="!ledgerPagination.next_page || loading"
+          @click="loadLedgerPage(ledgerPagination.page + 1)"
+        />
+      </div>
     </section>
 
     <!-- Incoming payouts -->
@@ -420,7 +518,7 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           <div class="admin-money-table-header">
             <div>
               <h2>Incoming payouts</h2>
-              <span>{{ filteredIncoming.length }} shown / {{ incoming.length }} total</span>
+              <span>{{ filteredIncoming.length }} shown on this page</span>
             </div>
             <div class="admin-money-filters">
               <UInput
@@ -490,6 +588,30 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           >No action</span>
         </template>
       </AdminDataTable>
+      <div
+        v-if="incomingPagination"
+        class="admin-money-pagination"
+      >
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-lucide-chevron-left"
+          label="Prev"
+          :disabled="!incomingPagination.prev_page || loading"
+          @click="loadIncomingPage(incomingPagination.page - 1)"
+        />
+        <span>{{ pageLabel(incomingPagination) }}</span>
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          trailing-icon="i-lucide-chevron-right"
+          label="Next"
+          :disabled="!incomingPagination.next_page || loading"
+          @click="loadIncomingPage(incomingPagination.page + 1)"
+        />
+      </div>
     </section>
 
     <!-- Withdrawals -->
@@ -503,7 +625,7 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           <div class="admin-money-table-header">
             <div>
               <h2>Withdrawals</h2>
-              <span>{{ filteredWithdrawals.length }} shown / {{ withdrawals.length }} total</span>
+              <span>{{ filteredWithdrawals.length }} shown on this page</span>
             </div>
             <div class="admin-money-filters">
               <USelect
@@ -564,6 +686,30 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           >No action</span>
         </template>
       </AdminDataTable>
+      <div
+        v-if="withdrawalPagination"
+        class="admin-money-pagination"
+      >
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          icon="i-lucide-chevron-left"
+          label="Prev"
+          :disabled="!withdrawalPagination.prev_page || loading"
+          @click="loadWithdrawalPage(withdrawalPagination.page - 1)"
+        />
+        <span>{{ pageLabel(withdrawalPagination) }}</span>
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="soft"
+          trailing-icon="i-lucide-chevron-right"
+          label="Next"
+          :disabled="!withdrawalPagination.next_page || loading"
+          @click="loadWithdrawalPage(withdrawalPagination.page + 1)"
+        />
+      </div>
     </section>
   </main>
 </template>
