@@ -51,6 +51,7 @@ function countdown(endsAt?: string | null) {
 }
 
 async function bidAuction(item: Auction, amount: number) {
+  if (sessionEnded.value) return
   if (amount < item.next_min_bid) return
   if (bidding.isMine(item.current_winner_member_id)) {
     if (!window.confirm('You are already winning this item. Bid against yourself anyway?')) return
@@ -64,6 +65,7 @@ async function bidAuction(item: Auction, amount: number) {
 }
 
 async function bidPrebid(item: Prebid, amount: number) {
+  if (sessionEnded.value) return
   if (amount < item.next_min_bid) return
   if (bidding.isMine(item.current_winner_member_id)) {
     if (!window.confirm('You are already leading this prebid. Bid again anyway?')) return
@@ -77,8 +79,15 @@ async function bidPrebid(item: Prebid, amount: number) {
 }
 
 function canCustomBid(item: Auction | Prebid) {
+  if (sessionEnded.value) return false
   const amount = bidInputs[item.id]
   return typeof amount === 'number' && amount >= item.next_min_bid
+}
+
+function canSubmitPrebid(item: Prebid) {
+  if (sessionEnded.value) return false
+  const amount = bidInputs[item.id]
+  return amount === undefined || amount >= item.next_min_bid
 }
 </script>
 
@@ -241,6 +250,7 @@ function canCustomBid(item: Auction | Prebid) {
                 icon="i-lucide-gavel"
                 label="Min"
                 :loading="submitting"
+                :disabled="sessionEnded"
                 @click="bidAuction(item, item.next_min_bid)"
               />
               <label class="bid-input">
@@ -250,6 +260,7 @@ function canCustomBid(item: Auction | Prebid) {
                   type="number"
                   :min="item.next_min_bid"
                   :placeholder="String(item.next_min_bid)"
+                  :disabled="sessionEnded"
                 />
               </label>
               <UButton
@@ -331,6 +342,7 @@ function canCustomBid(item: Auction | Prebid) {
                   type="number"
                   :min="item.next_min_bid"
                   :placeholder="String(item.next_min_bid)"
+                  :disabled="sessionEnded"
                 />
               </label>
               <UButton
@@ -338,6 +350,7 @@ function canCustomBid(item: Auction | Prebid) {
                 variant="solid"
                 label="Outbid"
                 :loading="submitting"
+                :disabled="!canSubmitPrebid(item)"
                 @click="bidPrebid(item, bidInputs[item.id] ?? item.next_min_bid)"
               />
             </div>

@@ -16,20 +16,11 @@ Greenfield **Nuxt 3 + TypeScript** frontend for CheeseBid, replacing the old van
 - **Wallet settlement UX**: winner auction settlement is backend-driven; wallet ledger labels `auction_win` as `Auction win` and displays the debit note (`auction win: <item>`). Amount strings stay exact and debit/credit coloring remains type-based.
 - **Catalog is id-based, no slug**: `Instance` has `id`; `Item` has `id` + `wow_item_id` + `instance_id`; the picker filters by `instance_id`. Icons keyed by `wow_item_id`.
 
-### Remaining
-- auction settlement reversal/refund UX is implemented: wallet shows `Auction refund`; admin closed auction rows expose `Reset + refund` / `Cancel + refund` confirmations.
-- profile/character self-management polish.
-- withdrawals, incoming balances, admin money dashboard, finished/session result export, V1 data migration, and legacy cleanup.
+### Migration status
 
-### Remaining 7 modules / workstreams
+Current FE migration status lives in `.ai/migration-status.md`.
 
-Detailed FE checklist lives in `.ai/roadmap-7-modules.md`.
-
-1. **Player profile + character self-management** — V1-like profile, password/change-profile UX, character CRUD polish, class/spec visuals.
-2. **Withdrawals full flow** — player request UX, admin review table, approve/reject/paid states, maintenance setting feedback.
-3. **Incoming balances / payout credits** — admin payout queue table, confirm/cancel UX, optional CheesePayout ingest UI/docs.
-4. **Admin money dashboard** — reuse `AdminDataTable` for ledger/incoming/withdrawals/settings, filters/search, gold-rate setting.
-5. **Finished/session results export** — final winners, totals, payout estimate, copy/export flow, V1 finished helpers parity.
+No known missing FE functional module. Remaining work is UI parity, imported-data browser QA, mobile/responsive polish, and optional product-specific improvements.
 6. **V1 SQLite → V2 Postgres migration support** — import status UI/docs if needed; FE mainly validates migrated records display correctly.
 7. **Legacy cleanup + production hardening** — remove stale UI hooks, finish error/empty states, verify build/deploy/runtime docs.
 

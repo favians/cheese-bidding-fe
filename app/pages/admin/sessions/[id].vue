@@ -34,6 +34,7 @@ const openPrebids = computed(() => prebids.value.filter(item => item.status === 
 const resolvedPrebids = computed(() => prebids.value.filter(item => item.status !== 'open'))
 const selectedInstances = computed(() => instances.value.filter(instance => draftInstanceIds.value.includes(instance.id)))
 const allowedItemInstanceIds = computed(() => sessionInstances.value.map(instance => instance.id))
+const isSessionEnded = computed(() => session.value?.status === 'ended')
 const summaryStats = computed(() => summary.value?.stats ?? null)
 const summaryAuctionResults = computed(() => summary.value?.auction_results ?? [])
 const resultAuctionRows = computed(() => summaryAuctionResults.value.length ? summaryAuctionResults.value : finishedAuctions.value.map(toSummaryAuctionResult))
@@ -271,6 +272,7 @@ function resetPrebidForm() {
 }
 
 async function submitAuction() {
+  if (isSessionEnded.value) return
   if (!auctionForm.item_name.trim()) return
   try {
     await store.createAuction(sessionId.value, { ...auctionForm })
@@ -282,6 +284,7 @@ async function submitAuction() {
 }
 
 async function submitPrebid() {
+  if (isSessionEnded.value) return
   if (!prebidForm.item_name.trim()) return
   try {
     await store.createPrebid(sessionId.value, { ...prebidForm })
@@ -307,6 +310,7 @@ function auctionActionMessage(item: Auction, action: 'close' | 'cancel' | 'reset
 }
 
 async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'reset') {
+  if (isSessionEnded.value && (action === 'close' || action === 'reset')) return
   if (import.meta.client && !window.confirm(auctionActionMessage(item, action))) {
     return
   }
@@ -327,6 +331,7 @@ function prebidActionMessage(item: Prebid, action: PrebidAction) {
 }
 
 async function runPrebidAction(item: Prebid, action: PrebidAction) {
+  if (isSessionEnded.value && action !== 'cancel') return
   if (action === 'delete-last-bid' && item.bid_count <= 1) {
     return
   }
@@ -373,6 +378,15 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
       variant="soft"
       icon="i-lucide-circle-alert"
       :title="error"
+      class="mb-4"
+    />
+    <UAlert
+      v-if="isSessionEnded"
+      color="neutral"
+      variant="soft"
+      icon="i-lucide-flag"
+      title="Session ended"
+      description="New auctions, live closes, and reset-to-active actions are disabled. Cancel closed auctions when refund cleanup is needed."
       class="mb-4"
     />
 
@@ -435,11 +449,18 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
               color="neutral"
               variant="ghost"
               :icon="showAuctionForm ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              :disabled="isSessionEnded"
               @click="showAuctionForm = !showAuctionForm"
             />
           </div>
+          <p
+            v-if="isSessionEnded"
+            class="session-muted"
+          >
+            Session ended. New auctions are disabled.
+          </p>
           <form
-            v-if="showAuctionForm"
+            v-else-if="showAuctionForm"
             class="session-form"
             @submit.prevent="submitAuction"
           >
@@ -487,6 +508,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
               block
               class="justify-center"
               :loading="saving"
+              :disabled="isSessionEnded"
             />
           </form>
         </section>
@@ -499,11 +521,18 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
               color="neutral"
               variant="ghost"
               :icon="showPrebidForm ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              :disabled="isSessionEnded"
               @click="showPrebidForm = !showPrebidForm"
             />
           </div>
+          <p
+            v-if="isSessionEnded"
+            class="session-muted"
+          >
+            Session ended. New prebids are disabled.
+          </p>
           <form
-            v-if="showPrebidForm"
+            v-else-if="showPrebidForm"
             class="session-form"
             @submit.prevent="submitPrebid"
           >
@@ -559,6 +588,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
               block
               class="justify-center"
               :loading="saving"
+              :disabled="isSessionEnded"
             />
           </form>
         </section>
@@ -744,6 +774,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
                 variant="soft"
                 icon="i-lucide-check"
                 label="Close"
+                :disabled="isSessionEnded"
                 @click="runAuctionAction(item, 'close')"
               />
               <UButton
@@ -752,6 +783,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
                 variant="soft"
                 icon="i-lucide-rotate-ccw"
                 label="Reset"
+                :disabled="isSessionEnded"
                 @click="runAuctionAction(item, 'reset')"
               />
               <UButton
@@ -775,6 +807,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
                   icon="i-lucide-play"
                   aria-label="Start live auction"
                   class="session-card-icon-button"
+                  :disabled="isSessionEnded"
                   @click="runPrebidAction(item, 'resolve')"
                 />
               </UTooltip>
@@ -786,7 +819,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
                   icon="i-lucide-list-x"
                   aria-label="Delete latest prebid"
                   class="session-card-icon-button"
-                  :disabled="item.bid_count <= 1"
+                  :disabled="isSessionEnded || item.bid_count <= 1"
                   @click="runPrebidAction(item, 'delete-last-bid')"
                 />
               </UTooltip>
@@ -798,6 +831,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
                   icon="i-lucide-package-x"
                   aria-label="Mark not dropped"
                   class="session-card-icon-button"
+                  :disabled="isSessionEnded"
                   @click="runPrebidAction(item, 'not-dropped')"
                 />
               </UTooltip>
@@ -830,6 +864,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
                   variant="soft"
                   icon="i-lucide-rotate-ccw"
                   label="Reset + refund"
+                  :disabled="isSessionEnded"
                   @click="runAuctionAction(item, 'reset')"
                 />
                 <UButton
