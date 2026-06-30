@@ -70,16 +70,7 @@ async function endSession(id: string) {
 
 <template>
   <main class="public-shell">
-    <AdminNav title="Sessions">
-      <template #actions>
-        <UButton
-          color="primary"
-          icon="i-lucide-plus"
-          label="New session"
-          to="/admin/sessions/new"
-        />
-      </template>
-    </AdminNav>
+    <AdminNav title="Sessions" />
 
     <UAlert
       v-if="error"
