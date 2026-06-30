@@ -20,7 +20,6 @@ const auctionForm = reactive<CreateAuctionRequest>({ item_name: '' })
 const prebidForm = reactive<CreatePrebidRequest>({ item_name: '' })
 const selectedAuctionItemName = ref('')
 const selectedPrebidItemName = ref('')
-const draftInstanceIds = ref<number[]>([])
 
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
@@ -32,8 +31,8 @@ const closedAuctions = computed(() => auctions.value.filter(item => item.status 
 const cancelledAuctions = computed(() => auctions.value.filter(item => item.status === 'cancelled'))
 const openPrebids = computed(() => prebids.value.filter(item => item.status === 'open'))
 const resolvedPrebids = computed(() => prebids.value.filter(item => item.status !== 'open'))
-const selectedInstances = computed(() => instances.value.filter(instance => draftInstanceIds.value.includes(instance.id)))
 const allowedItemInstanceIds = computed(() => sessionInstances.value.map(instance => instance.id))
+const selectedInstances = computed(() => instances.value.filter(instance => allowedItemInstanceIds.value.includes(instance.id)))
 const isSessionEnded = computed(() => session.value?.status === 'ended')
 const summaryStats = computed(() => summary.value?.stats ?? null)
 const summaryAuctionResults = computed(() => summary.value?.auction_results ?? [])
@@ -124,10 +123,6 @@ onBeforeUnmount(() => {
   if (poll) clearInterval(poll)
 })
 
-watch(sessionInstances, (rows) => {
-  draftInstanceIds.value = rows.map(instance => instance.id)
-}, { immediate: true })
-
 watch(() => auctionForm.item_name, (name) => {
   if (auctionForm.item_id && name !== selectedAuctionItemName.value) {
     auctionForm.item_id = undefined
@@ -195,22 +190,6 @@ function onPrebidItem(item: Item) {
   prebidForm.item_name = item.name
   prebidForm.item_id = item.wow_item_id
   selectedPrebidItemName.value = item.name
-}
-
-function toggleInstance(id: number) {
-  if (draftInstanceIds.value.includes(id)) {
-    draftInstanceIds.value = draftInstanceIds.value.filter(instanceID => instanceID !== id)
-    return
-  }
-  draftInstanceIds.value = [...draftInstanceIds.value, id]
-}
-
-function isInstanceSelected(id: number) {
-  return draftInstanceIds.value.includes(id)
-}
-
-async function saveInstances() {
-  await store.saveInstances(sessionId.value, draftInstanceIds.value)
 }
 
 async function copyJoin() {
@@ -409,34 +388,6 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
             <span>Cut <strong>{{ session?.management_cut_percent ?? 0 }}%</strong></span>
             <span>Players <strong>{{ session?.player_count || members.length }}</strong></span>
             <span>Payout <strong>{{ estimatedPayout }}</strong></span>
-          </div>
-        </section>
-
-        <section class="session-panel">
-          <div class="session-panel-head">
-            <h3>Raid Instances</h3>
-            <UButton
-              size="xs"
-              color="primary"
-              variant="soft"
-              icon="i-lucide-save"
-              label="Save"
-              :loading="saving"
-              @click="saveInstances"
-            />
-          </div>
-          <div class="session-instance-picker">
-            <button
-              v-for="instance in instances"
-              :key="instance.id"
-              type="button"
-              class="session-instance-choice"
-              :class="{ 'is-selected': isInstanceSelected(instance.id) }"
-              @click="toggleInstance(instance.id)"
-            >
-              <span>{{ instance.name }}</span>
-              <small>{{ instance.expansion }}</small>
-            </button>
           </div>
         </section>
 
