@@ -2,11 +2,15 @@
 import type { Item } from '#shared/types/api'
 
 const props = withDefaults(defineProps<{
+  modelValue: string
   allowedInstanceIds?: number[]
 }>(), {
   allowedInstanceIds: () => []
 })
-const emit = defineEmits<{ select: [item: Item] }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+  'select': [item: Item]
+}>()
 
 const catalog = useCatalogStore()
 // instances are shared (cached once); items + loading are LOCAL to this picker
@@ -15,9 +19,16 @@ const { instances } = storeToRefs(catalog)
 const items = ref<Item[]>([])
 const loading = ref(false)
 const instanceID = ref(0)
-const search = ref('')
 const ready = ref(false)
 let timer: ReturnType<typeof setTimeout> | undefined
+
+const allowedSet = computed(() => new Set(props.allowedInstanceIds))
+const visibleInstances = computed(() => {
+  if (!props.allowedInstanceIds.length) return instances.value
+  return instances.value.filter(instance => allowedSet.value.has(instance.id))
+})
+// only worth picking when the session spans more than one instance
+const showInstancePicker = computed(() => visibleInstances.value.length > 1)
 
 async function searchItems() {
   loading.value = true
@@ -25,7 +36,7 @@ async function searchItems() {
     const { request } = useApi()
     const q = new URLSearchParams()
     if (instanceID.value) q.set('instance_id', String(instanceID.value))
-    if (search.value.trim()) q.set('search', search.value.trim())
+    if (props.modelValue.trim()) q.set('search', props.modelValue.trim())
     q.set('limit', '60')
     items.value = await request<Item[]>(`/api/v1/internal/items?${q.toString()}`) ?? []
   } catch {
@@ -35,22 +46,6 @@ async function searchItems() {
   }
 }
 
-const allowedSet = computed(() => new Set(props.allowedInstanceIds))
-const visibleInstances = computed(() => {
-  if (!props.allowedInstanceIds.length) return instances.value
-  return instances.value.filter(instance => allowedSet.value.has(instance.id))
-})
-
-const instanceOptions = computed(() => {
-  if (props.allowedInstanceIds.length) {
-    return visibleInstances.value.map(i => ({ label: i.name, value: i.id }))
-  }
-  return [
-    { label: 'All instances', value: 0 },
-    ...instances.value.map(i => ({ label: i.name, value: i.id }))
-  ]
-})
-
 onMounted(async () => {
   await catalog.loadInstances()
   syncInstanceSelection()
@@ -58,7 +53,8 @@ onMounted(async () => {
   await searchItems()
 })
 
-watch([instanceID, search], () => {
+// the item-name field doubles as the search box
+watch([instanceID, () => props.modelValue], () => {
   if (!ready.value) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(searchItems, 250)
@@ -69,10 +65,18 @@ watch(() => props.allowedInstanceIds, () => {
 }, { deep: true })
 
 function syncInstanceSelection() {
-  if (!props.allowedInstanceIds.length) return
+  if (!props.allowedInstanceIds.length) {
+    instanceID.value = 0
+    return
+  }
   if (!props.allowedInstanceIds.includes(instanceID.value)) {
     instanceID.value = props.allowedInstanceIds[0] ?? 0
   }
+}
+
+function selectItem(item: Item) {
+  emit('update:modelValue', item.name)
+  emit('select', item)
 }
 
 function iconUrl(item: Item) {
@@ -85,21 +89,37 @@ function onIconError(e: globalThis.Event) {
 </script>
 
 <template>
-  <div>
-    <div class="mb-3 flex gap-2">
-      <USelect
-        v-model="instanceID"
-        :items="instanceOptions"
-        class="w-44"
-        :disabled="props.allowedInstanceIds.length > 0 && !instanceOptions.length"
-      />
+  <div class="item-picker">
+    <UFormField
+      label="Item Name"
+      required
+    >
       <UInput
-        v-model="search"
-        placeholder="Search item…"
+        :model-value="modelValue"
+        class="w-full"
         icon="i-lucide-search"
-        class="flex-1"
+        placeholder="Search or type item name"
+        @update:model-value="emit('update:modelValue', String($event))"
       />
+    </UFormField>
+
+    <div
+      v-if="showInstancePicker"
+      class="session-instance-picker"
+    >
+      <button
+        v-for="instance in visibleInstances"
+        :key="instance.id"
+        type="button"
+        class="session-instance-choice"
+        :class="{ 'is-selected': instanceID === instance.id }"
+        @click="instanceID = instance.id"
+      >
+        <span>{{ instance.name }}</span>
+        <small>{{ instance.expansion }}</small>
+      </button>
     </div>
+
     <div
       v-if="loading"
       class="py-6 text-center opacity-70"
@@ -121,7 +141,7 @@ function onIconError(e: globalThis.Event) {
         :key="item.id"
         type="button"
         class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/10"
-        @click="emit('select', item)"
+        @click="selectItem(item)"
       >
         <img
           :src="iconUrl(item)"

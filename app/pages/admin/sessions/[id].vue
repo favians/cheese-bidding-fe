@@ -183,13 +183,20 @@ function iconUrl(item: Auction | Prebid) {
 function onAuctionItem(item: Item) {
   auctionForm.item_name = item.name
   auctionForm.item_id = item.wow_item_id
+  auctionForm.min_bid = positiveOrUndefined(item.default_min_bid) ?? positiveOrUndefined(session.value?.default_min_bid)
   selectedAuctionItemName.value = item.name
 }
 
 function onPrebidItem(item: Item) {
   prebidForm.item_name = item.name
   prebidForm.item_id = item.wow_item_id
+  prebidForm.min_bid = positiveOrUndefined(item.default_min_bid) ?? positiveOrUndefined(session.value?.default_min_bid)
+  prebidForm.initial_price = positiveOrUndefined(item.default_prebid_opening_price) ?? positiveOrUndefined(session.value?.default_min_bid)
   selectedPrebidItemName.value = item.name
+}
+
+function positiveOrUndefined(value?: number | null) {
+  return typeof value === 'number' && value > 0 ? value : undefined
 }
 
 async function copyJoin() {
@@ -414,17 +421,8 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
             class="session-form"
             @submit.prevent="submitAuction"
           >
-            <UFormField
-              label="Item Name"
-              required
-            >
-              <UInput
-                v-model="auctionForm.item_name"
-                class="w-full"
-                placeholder="Pick loot or type item name"
-              />
-            </UFormField>
             <ItemPicker
+              v-model="auctionForm.item_name"
               :allowed-instance-ids="allowedItemInstanceIds"
               @select="onAuctionItem"
             />
@@ -486,17 +484,8 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
             class="session-form"
             @submit.prevent="submitPrebid"
           >
-            <UFormField
-              label="Item Name"
-              required
-            >
-              <UInput
-                v-model="prebidForm.item_name"
-                class="w-full"
-                placeholder="Pick loot or type item name"
-              />
-            </UFormField>
             <ItemPicker
+              v-model="prebidForm.item_name"
               :allowed-instance-ids="allowedItemInstanceIds"
               @select="onPrebidItem"
             />
