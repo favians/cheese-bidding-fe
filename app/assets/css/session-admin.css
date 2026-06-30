@@ -591,6 +591,39 @@
   gap: 12px;
 }
 
+/* Field labels + a dark field surface with explicit light text, so values
+   never render dark-on-dark inside the control panel forms. */
+.session-form label {
+  color: var(--cb-theme);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.session-form input,
+.session-form select,
+.session-form textarea {
+  background: rgba(10, 6, 7, 0.6);
+  color: var(--cb-text);
+  box-shadow: inset 0 0 0 1px rgba(var(--cb-theme-rgb), 0.4) !important;
+}
+
+.session-form input::placeholder,
+.session-form textarea::placeholder {
+  color: rgba(248, 232, 194, 0.45);
+}
+
+.session-form input:focus,
+.session-form select:focus,
+.session-form textarea:focus,
+.session-form input:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--cb-theme-rgb), 0.9),
+    0 0 0 3px rgba(var(--cb-theme-rgb), 0.18) !important;
+}
+
 .session-form-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

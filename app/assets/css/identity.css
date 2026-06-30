@@ -348,15 +348,26 @@ body::after {
 }
 
 /* Gold-outlined inputs: a gold inset ring (overrides Nuxt UI's neutral ring)
-   plus a brighter gold glow on focus. */
+   plus a brighter gold glow on focus. The dark field background needs an
+   explicit light text colour, otherwise the value renders dark-on-dark. */
 .login-form input,
+.login-form select,
+.login-form textarea,
 .profile-password-form input {
   background: rgba(10, 6, 7, 0.6);
+  color: var(--cb-text);
   box-shadow: inset 0 0 0 1px rgba(var(--cb-theme-rgb), 0.45) !important;
+}
+
+.login-form input::placeholder,
+.login-form textarea::placeholder {
+  color: rgba(248, 232, 194, 0.45);
 }
 
 .login-form input:focus,
 .login-form input:focus-visible,
+.login-form select:focus,
+.login-form textarea:focus,
 .profile-password-form input:focus,
 .profile-password-form input:focus-visible {
   outline: none;
