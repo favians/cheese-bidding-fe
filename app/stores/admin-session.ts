@@ -50,6 +50,22 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     await loadSummary(id)
   }
 
+  // patchRows merges incoming rows into the existing list by id, reusing the
+  // existing object for unchanged rows so the 2s admin poll doesn't replace the
+  // whole array (which makes the board flicker / re-render). Object identity is
+  // preserved for rows still present, so Vue's keyed diff does minimal DOM work.
+  function patchRows<T extends { id: string }>(target: Ref<T[]>, incoming: T[]) {
+    const byId = new Map(target.value.map(row => [row.id, row]))
+    target.value = incoming.map((row) => {
+      const existing = byId.get(row.id)
+      if (existing) {
+        Object.assign(existing, row)
+        return existing
+      }
+      return row
+    })
+  }
+
   async function refresh(id: string) {
     const { request } = useApi()
     try {
@@ -57,8 +73,8 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
         request<Auction[]>(`/api/v1/internal/sessions/${id}/auctions`),
         request<Prebid[]>(`/api/v1/internal/sessions/${id}/prebids`)
       ])
-      auctions.value = a ?? []
-      prebids.value = p ?? []
+      patchRows(auctions, a ?? [])
+      patchRows(prebids, p ?? [])
       await loadSummary(id)
     } catch {
       // keep last good state on a transient refresh failure
