@@ -52,7 +52,6 @@ const managementCutAmount = computed(() => {
 })
 const resultSoldCount = computed(() => summaryStats.value?.sold_count ?? closedAuctions.value.length)
 const resultCancelledCount = computed(() => summaryStats.value?.cancelled_count ?? cancelledAuctions.value.length)
-const resultOpenCount = computed(() => summaryStats.value?.open_count ?? activeAuctions.value.length)
 const resultPlayerCount = computed(() => summaryStats.value?.player_count ?? session.value?.player_count ?? members.value.length)
 const resultSpendRows = computed(() => {
   if (summary.value) {

@@ -111,7 +111,7 @@ const filteredBalances = computed(() => {
 })
 
 const filteredLedger = computed(() => {
-  return ledger.value.filter(row => {
+  return ledger.value.filter((row) => {
     return rowMatchesMoneySearch(row.client_id, row.source, row.type, row.amount, row.balance_after, row.note, row.session_snapshot)
   })
 })
@@ -124,13 +124,13 @@ function nextStates(status: WithdrawalStatus): WithdrawalStatus[] {
 }
 
 const filteredIncoming = computed(() => {
-  return incoming.value.filter(row => {
+  return incoming.value.filter((row) => {
     return rowMatchesMoneySearch(row.client_id, row.amount, row.week_id, row.note)
   })
 })
 
 const filteredWithdrawals = computed(() => {
-  return withdrawals.value.filter(row => {
+  return withdrawals.value.filter((row) => {
     return rowMatchesMoneySearch(row.client_id, row.amount, row.payment_method, row.note, row.admin_note)
   })
 })
@@ -223,7 +223,6 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
     // store exposes error
   }
 }
-
 </script>
 
 <template>
