@@ -9,10 +9,31 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ select: [item: Item] }>()
 
 const catalog = useCatalogStore()
-const { instances, items, loading } = storeToRefs(catalog)
+// instances are shared (cached once); items + loading are LOCAL to this picker
+// so two pickers (auction + prebid forms) don't thrash a shared list/spinner.
+const { instances } = storeToRefs(catalog)
+const items = ref<Item[]>([])
+const loading = ref(false)
 const instanceID = ref(0)
 const search = ref('')
+const ready = ref(false)
 let timer: ReturnType<typeof setTimeout> | undefined
+
+async function searchItems() {
+  loading.value = true
+  try {
+    const { request } = useApi()
+    const q = new URLSearchParams()
+    if (instanceID.value) q.set('instance_id', String(instanceID.value))
+    if (search.value.trim()) q.set('search', search.value.trim())
+    q.set('limit', '60')
+    items.value = await request<Item[]>(`/api/v1/internal/items?${q.toString()}`) ?? []
+  } catch {
+    items.value = []
+  } finally {
+    loading.value = false
+  }
+}
 
 const allowedSet = computed(() => new Set(props.allowedInstanceIds))
 const visibleInstances = computed(() => {
@@ -30,14 +51,17 @@ const instanceOptions = computed(() => {
   ]
 })
 
-onMounted(() => {
-  catalog.loadInstances().then(() => syncInstanceSelection())
-  catalog.searchItems(instanceID.value, '')
+onMounted(async () => {
+  await catalog.loadInstances()
+  syncInstanceSelection()
+  ready.value = true // search exactly once, after the instance is settled
+  await searchItems()
 })
 
 watch([instanceID, search], () => {
+  if (!ready.value) return
   if (timer) clearTimeout(timer)
-  timer = setTimeout(() => catalog.searchItems(instanceID.value, search.value), 250)
+  timer = setTimeout(searchItems, 250)
 })
 
 watch(() => props.allowedInstanceIds, () => {
