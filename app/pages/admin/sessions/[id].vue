@@ -182,7 +182,7 @@ function countdown(endsAt?: string | null) {
 }
 
 function iconUrl(item: Auction | Prebid) {
-  return item.item_id ? `/icons/${item.item_id}.jpg` : ''
+  return item.item_icon_url || (item.item_id ? `/api/v1/images?path=files/icons/${item.item_id}.jpg` : '')
 }
 
 function onAuctionItem(item: Item) {

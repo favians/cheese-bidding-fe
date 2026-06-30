@@ -13,6 +13,7 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   // most recent moment the caller lost a top bid (page watches this for a toast)
   const lastOutbid = ref<{ name: string, ts: number } | null>(null)
+  const lastNewItem = ref<{ name: string, ts: number } | null>(null)
 
   const activeAuctions = computed(() => auctions.value.filter(a => a.status === 'active'))
   const openPrebids = computed(() => prebids.value.filter(p => p.status === 'open'))
@@ -115,6 +116,16 @@ export const useBiddingStore = defineStore('bidding', () => {
     const es = new EventSource(`/api/v1/client/events?session_id=${encodeURIComponent(sessionId)}`)
     const onAuction = (e: Event) => patchAuction(JSON.parse((e as MessageEvent).data) as Auction)
     const onPrebid = (e: Event) => patchPrebid(JSON.parse((e as MessageEvent).data) as Prebid)
+    const onAuctionCreated = (e: Event) => {
+      const item = JSON.parse((e as MessageEvent).data) as Auction
+      lastNewItem.value = { name: item.item_name, ts: Date.now() }
+      patchAuction(item)
+    }
+    const onPrebidCreated = (e: Event) => {
+      const item = JSON.parse((e as MessageEvent).data) as Prebid
+      lastNewItem.value = { name: item.item_name, ts: Date.now() }
+      patchPrebid(item)
+    }
     const onSessionChanged = () => {
       void load(sessionId).catch(() => undefined)
     }
@@ -125,9 +136,9 @@ export const useBiddingStore = defineStore('bidding', () => {
     const onSessionDeleted = () => {
       markSessionUnavailable('deleted', 'This session was deleted by admin.')
     }
-    es.addEventListener('auction.created', onAuction)
+    es.addEventListener('auction.created', onAuctionCreated)
     es.addEventListener('auction.updated', onAuction)
-    es.addEventListener('prebid.created', onPrebid)
+    es.addEventListener('prebid.created', onPrebidCreated)
     es.addEventListener('prebid.updated', onPrebid)
     es.addEventListener('session.updated', onSessionChanged)
     es.addEventListener('session.ended', onSessionEnded)
@@ -193,6 +204,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     openPrebids,
     closedAuctions,
     lastOutbid,
+    lastNewItem,
     sessionUnavailable,
     sessionEnded,
     myMember,

@@ -107,6 +107,8 @@ export interface Auction {
   session_id: string
   item_name: string
   item_id: number
+  item_icon_path: string
+  item_icon_url: string
   initial_buyer_name: string
   initial_price: number
   status: AuctionStatus
@@ -129,6 +131,8 @@ export interface Prebid {
   session_id: string
   item_name: string
   item_id: number
+  item_icon_path: string
+  item_icon_url: string
   status: PrebidStatus
   min_bid: number
   bid_increment: number
@@ -228,6 +232,7 @@ export interface Item {
   quality: string
   boss_name: string
   icon_path: string
+  icon_url: string
 }
 
 // --- money (amounts are decimal strings from the backend) ---

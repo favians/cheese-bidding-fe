@@ -8,12 +8,22 @@ type PlayerTab = 'bid' | 'prebid'
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const bidding = useBiddingStore()
-const { activeAuctions, openPrebids, closedAuctions, lastOutbid, sessionUnavailable, sessionEnded, loading, bidding: submitting, error } = storeToRefs(bidding)
+const { activeAuctions, openPrebids, closedAuctions, lastOutbid, lastNewItem, sessionUnavailable, sessionEnded, loading, bidding: submitting, error } = storeToRefs(bidding)
 
 const toast = useToast()
+let outbidAudio: HTMLAudioElement | undefined
+let newItemAudio: HTMLAudioElement | undefined
+
 watch(lastOutbid, (v) => {
   if (v) {
     toast.add({ title: 'Outbid!', description: v.name, color: 'error', icon: 'i-lucide-bell-ring' })
+    playOutbidSound()
+  }
+})
+
+watch(lastNewItem, (v) => {
+  if (v) {
+    playNewItemSound()
   }
 })
 
@@ -24,6 +34,10 @@ const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
 
 onMounted(() => {
+  outbidAudio = new Audio('/outbid-alert.mp3')
+  outbidAudio.preload = 'auto'
+  newItemAudio = new Audio('/new-item.mp3')
+  newItemAudio.preload = 'auto'
   bidding.load(sessionId.value)
   bidding.loadMyMember(sessionId.value)
   bidding.loadMembers(sessionId.value)
@@ -34,8 +48,32 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (clock) clearInterval(clock)
+  if (outbidAudio) {
+    outbidAudio.pause()
+    outbidAudio = undefined
+  }
+  if (newItemAudio) {
+    newItemAudio.pause()
+    newItemAudio = undefined
+  }
   bidding.disconnect()
 })
+
+function playOutbidSound() {
+  if (!outbidAudio) return
+  outbidAudio.currentTime = 0
+  void outbidAudio.play().catch(() => {
+    // browser may block audio until user interacts; toast still shows
+  })
+}
+
+function playNewItemSound() {
+  if (!newItemAudio) return
+  newItemAudio.currentTime = 0
+  void newItemAudio.play().catch(() => {
+    // browser may block audio until user interacts
+  })
+}
 
 function secondsLeft(endsAt?: string | null) {
   if (!endsAt) return 0
@@ -48,6 +86,10 @@ function countdown(endsAt?: string | null) {
   const total = secondsLeft(endsAt)
   if (total <= 0) return 'closing…'
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+function iconUrl(item: Auction | Prebid) {
+  return item.item_icon_url || (item.item_id ? `/api/v1/images?path=files/icons/${item.item_id}.jpg` : '')
 }
 
 async function bidAuction(item: Auction, amount: number) {
@@ -205,7 +247,7 @@ function canSubmitPrebid(item: Prebid) {
               <div class="item-icon">
                 <img
                   v-if="item.item_id"
-                  :src="`/icons/${item.item_id}.jpg`"
+                  :src="iconUrl(item)"
                   alt=""
                 >
                 <span v-else>?</span>
@@ -296,7 +338,7 @@ function canSubmitPrebid(item: Prebid) {
               <div class="item-icon">
                 <img
                   v-if="item.item_id"
-                  :src="`/icons/${item.item_id}.jpg`"
+                  :src="iconUrl(item)"
                   alt=""
                 >
                 <span v-else>?</span>

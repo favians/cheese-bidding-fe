@@ -52,7 +52,7 @@ function syncInstanceSelection() {
 }
 
 function iconUrl(item: Item) {
-  return item.icon_path ? `/${item.icon_path}` : `/icons/${item.wow_item_id}.jpg`
+  return item.icon_url || `/api/v1/images?path=files/icons/${item.wow_item_id}.jpg`
 }
 
 function onIconError(e: globalThis.Event) {
