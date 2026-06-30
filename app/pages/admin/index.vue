@@ -4,7 +4,11 @@ import type { Session } from '#shared/types/api'
 definePageMeta({ middleware: 'admin' })
 
 const sessionsStore = useSessionsStore()
-const { sessions, loading, error } = storeToRefs(sessionsStore)
+const { sessions, pagination, loading, error } = storeToRefs(sessionsStore)
+
+function loadSessions(page = pagination.value?.page ?? 1) {
+  return sessionsStore.load({ page })
+}
 
 const sessionColumns = [
   { key: 'title', label: 'Session' },
@@ -16,7 +20,7 @@ const sessionColumns = [
   { key: 'actions', label: 'Actions' }
 ]
 
-onMounted(() => sessionsStore.load())
+onMounted(() => loadSessions(1))
 
 function formatDateTime(value?: string | null) {
   if (!value) {
@@ -180,6 +184,31 @@ async function endSession(id: string) {
           </div>
         </template>
       </AdminDataTable>
+
+      <div
+        v-if="pagination && pagination.page_total > 1"
+        class="mt-4 flex items-center justify-between"
+      >
+        <UButton
+          color="neutral"
+          variant="soft"
+          icon="i-lucide-chevron-left"
+          label="Prev"
+          :disabled="!pagination.prev_page || loading"
+          @click="loadSessions(pagination.page - 1)"
+        />
+        <span class="text-sm opacity-70">
+          Page {{ pagination.page }} / {{ pagination.page_total }}
+        </span>
+        <UButton
+          color="neutral"
+          variant="soft"
+          trailing-icon="i-lucide-chevron-right"
+          label="Next"
+          :disabled="!pagination.next_page || loading"
+          @click="loadSessions(pagination.page + 1)"
+        />
+      </div>
     </div>
   </main>
 </template>
