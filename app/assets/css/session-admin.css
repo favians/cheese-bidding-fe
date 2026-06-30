@@ -329,6 +329,101 @@
   margin-bottom: 24px;
 }
 
+.admin-money-external-card {
+  border-color: rgba(var(--cb-theme-rgb), 0.24);
+  background:
+    linear-gradient(135deg, rgba(18, 9, 7, 0.96), rgba(52, 26, 8, 0.88)),
+    radial-gradient(circle at 10% 0%, rgba(var(--cb-theme-rgb), 0.18), transparent 24rem);
+}
+
+.admin-money-external-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.admin-money-external-header p,
+.admin-money-external-block span {
+  margin: 0 0 4px;
+  color: var(--cb-theme);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-money-external-header h2 {
+  margin: 0;
+  color: var(--cb-text);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.admin-money-external-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-money-external-block {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--cb-line);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.admin-money-external-block code,
+.admin-money-external-block pre {
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.18);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--cb-text);
+  font-size: 0.78rem;
+}
+
+.admin-money-external-block code {
+  padding: 7px 9px;
+}
+
+.admin-money-external-block pre {
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+
+.admin-money-external-block p,
+.admin-money-external-note {
+  color: var(--cb-muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.admin-money-external-block p {
+  margin: 0;
+}
+
+.admin-money-external-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(var(--cb-theme-rgb), 0.28);
+  border-radius: 14px;
+  background: rgba(var(--cb-theme-rgb), 0.07);
+}
+
+.admin-money-external-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--cb-theme);
+}
+
 .admin-money-table-header h2 {
   margin: 0;
   color: var(--cb-text);
@@ -987,6 +1082,15 @@
 
   .admin-money-filters {
     justify-content: stretch;
+  }
+
+  .admin-money-external-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-money-external-grid {
+    grid-template-columns: 1fr;
   }
 
   .session-results-actions {

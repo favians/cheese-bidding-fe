@@ -142,6 +142,7 @@ Implemented:
 - `/admin/money` incoming balances use `AdminDataTable`
 - incoming status filter and shared search
 - confirm/cancel actions use icon buttons, tooltips, and confirmation
+- external CheesePayout help panel documents V1-compatible endpoints, HMAC header, incoming payload, item-debit payload, and idempotency behavior
 
 ## 4. Admin money dashboard
 
@@ -228,7 +229,8 @@ Current state:
 - V1 import has been applied locally into Postgres with zero skips / zero unsupported rows.
 - Admin money balance/ledger endpoints spot-verified after BE restart.
 - V1 prebid status `auctioned` is normalized to V2 `resolved`; imported session prebids now match FE `PrebidStatus`.
-- Remaining FE work is visual validation across imported sessions, players, money, wallet, and finished result screens.
+- Imported-data display hardening added for nullable/invalid date/timer fields on admin sessions, admin session detail, player live board, and admin money tables.
+- Remaining FE work is browser visual validation across imported sessions, players, money, wallet, and finished result screens.
 
 FE scope:
 - no importer UI by default
@@ -258,6 +260,8 @@ Goal: remove stale UI assumptions and make FE clean to run/deploy.
 Current state:
 - README documents Nuxt runtime env vars, auth cookies, BFF proxy, production preview command, and SSE/proxy notes.
 - verified: `pnpm typecheck` and `pnpm build` pass.
+- protected API calls now clear the matching local auth store and redirect on 401 (`/api/v1/internal/**` → admin login, `/api/v1/client/**` → player login with redirect); 403 remains visible as an action/permission error.
+- Nitro now proxies V1-compatible CheesePayout `/api/external/incoming-balances` and `/api/external/item-debits` to backend, so production can expose them through the same FE origin when needed.
 
 FE scope:
 - remove stale routes/types/components no longer used

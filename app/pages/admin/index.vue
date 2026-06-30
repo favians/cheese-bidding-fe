@@ -49,7 +49,7 @@ onMounted(() => {
 
 watch([selectedInstanceIds, sessionFaction, () => form.date_to], updatePrebuiltTitle)
 
-function formatPrebuiltDate(value?: string) {
+function formatPrebuiltDate(value?: string | null) {
   if (!value) {
     return ''
   }
@@ -90,8 +90,12 @@ function isInstanceSelected(id: number) {
   return selectedInstanceIds.value.includes(id)
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value?: string | null) {
   if (!value) {
+    return '—'
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
     return '—'
   }
   return new Intl.DateTimeFormat('en-US', {
@@ -99,7 +103,7 @@ function formatDateTime(value: string) {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  }).format(new Date(value))
+  }).format(date)
 }
 
 function sessionSubtitle(row: Session) {

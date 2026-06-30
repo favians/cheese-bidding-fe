@@ -31,6 +31,32 @@ export class ApiClientError extends Error {
   }
 }
 
+function isInternalApiPath(path: string) {
+  return path === '/api/v1/internal' || path.startsWith('/api/v1/internal/')
+}
+
+function isClientApiPath(path: string) {
+  return path === '/api/v1/client' || path.startsWith('/api/v1/client/')
+}
+
+async function handleAuthFailure(path: string, error: ApiClientError) {
+  if (error.status !== 401) return
+
+  if (isInternalApiPath(path)) {
+    const adminAuth = useAdminAuthStore()
+    adminAuth.clearSession()
+    await navigateTo('/admin/login')
+    return
+  }
+
+  if (isClientApiPath(path)) {
+    const auth = useAuthStore()
+    const route = useRoute()
+    auth.clearSession()
+    await navigateTo({ path: '/', query: { redirect: route.fullPath } })
+  }
+}
+
 export function useApi() {
   async function request<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
     try {
@@ -40,7 +66,9 @@ export function useApi() {
       }
       return envelope.data
     } catch (error: unknown) {
-      throw toApiError(error)
+      const apiError = toApiError(error)
+      await handleAuthFailure(path, apiError)
+      throw apiError
     }
   }
 
@@ -53,7 +81,9 @@ export function useApi() {
       }
       return { data: envelope.data, pagination: envelope.pagination ?? null }
     } catch (error: unknown) {
-      throw toApiError(error)
+      const apiError = toApiError(error)
+      await handleAuthFailure(path, apiError)
+      throw apiError
     }
   }
 

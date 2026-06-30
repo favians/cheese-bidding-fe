@@ -171,8 +171,11 @@ function summaryWinnerName(row: SessionAuctionResult) {
   return row.character_name || row.discord_name || row.discord_id || row.winner_member_id || '—'
 }
 
-function countdown(endsAt: string) {
-  const ms = new Date(endsAt).getTime() - now.value
+function countdown(endsAt?: string | null) {
+  if (!endsAt) return 'closing…'
+  const endMs = new Date(endsAt).getTime()
+  if (Number.isNaN(endMs)) return 'closing…'
+  const ms = endMs - now.value
   if (ms <= 0) return 'closing…'
   const total = Math.floor(ms / 1000)
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`

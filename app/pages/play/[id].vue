@@ -37,11 +37,14 @@ onBeforeUnmount(() => {
   bidding.disconnect()
 })
 
-function secondsLeft(endsAt: string) {
-  return Math.max(0, Math.floor((new Date(endsAt).getTime() - now.value) / 1000))
+function secondsLeft(endsAt?: string | null) {
+  if (!endsAt) return 0
+  const endMs = new Date(endsAt).getTime()
+  if (Number.isNaN(endMs)) return 0
+  return Math.max(0, Math.floor((endMs - now.value) / 1000))
 }
 
-function countdown(endsAt: string) {
+function countdown(endsAt?: string | null) {
   const total = secondsLeft(endsAt)
   if (total <= 0) return 'closing…'
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`

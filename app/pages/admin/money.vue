@@ -17,6 +17,19 @@ const moneySearch = ref('')
 const incomingStatusItems = ['all', 'pending', 'confirmed', 'cancelled']
 const withdrawalStatusItems = ['all', 'pending', 'approved', 'rejected', 'paid']
 const ledgerTypeItems = ['all', 'credit', 'debit']
+const externalIncomingPayload = `{
+  "discordId": "123456789012345678",
+  "weekId": "2026-W26",
+  "amount": 25000,
+  "note": "CheesePayout week payout"
+}`
+const externalItemDebitPayload = `{
+  "discordId": "123456789012345678",
+  "eventId": "week-2026-W26-item-123",
+  "amount": 5000,
+  "itemName": "Warglaive of Azzinoth",
+  "sessionSnapshot": "Friday 26 June 2026"
+}`
 const balanceColumns = [
   { key: 'client_id', label: 'Client' },
   { key: 'balance_amount', label: 'Balance' }
@@ -120,13 +133,16 @@ function moneyTone(value: string | number) {
   return Number(value) < 0 ? 'admin-money-amount admin-money-amount--debit' : 'admin-money-amount admin-money-amount--credit'
 }
 
-function formatDate(value: string) {
+function formatDate(value?: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
-  }).format(new Date(value))
+  }).format(date)
 }
 
 async function submitIncoming() {
@@ -257,6 +273,49 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           :loading="saving"
         />
       </form>
+    </UCard>
+
+    <!-- External CheesePayout integration -->
+    <UCard class="admin-money-external-card mb-6">
+      <div class="admin-money-external-header">
+        <div>
+          <p>CheesePayout integration</p>
+          <h2>External wallet sync endpoints</h2>
+        </div>
+        <UBadge
+          color="success"
+          variant="soft"
+        >
+          V1 compatible
+        </UBadge>
+      </div>
+
+      <div class="admin-money-external-grid">
+        <div class="admin-money-external-block">
+          <span>Incoming payout queue</span>
+          <code>POST /api/external/incoming-balances</code>
+          <code>POST /api/v1/external/incoming-balances</code>
+          <p>Creates pending payout rows. Admin confirmation credits the wallet. Duplicate Discord ID + week ID is safe.</p>
+          <pre>{{ externalIncomingPayload }}</pre>
+        </div>
+
+        <div class="admin-money-external-block">
+          <span>Item debit sync</span>
+          <code>POST /api/external/item-debits</code>
+          <code>POST /api/v1/external/item-debits</code>
+          <p>CheesePayout sends a positive amount. V2 stores a negative ledger row with source <strong>cheesepayout_item</strong>. Duplicate event ID is safe.</p>
+          <pre>{{ externalItemDebitPayload }}</pre>
+        </div>
+      </div>
+
+      <div class="admin-money-external-note">
+        <UIcon name="i-lucide-key-round" />
+        <span>
+          Required header: <strong>X-Cheese-Signature</strong>.
+          Signature must be <strong>hex(hmac_sha256(minified_json_body, INCOMING_BALANCE_API_SECRET))</strong>;
+          <strong>sha256=&lt;hex&gt;</strong> is also accepted.
+        </span>
+      </div>
     </UCard>
 
     <!-- Balances -->

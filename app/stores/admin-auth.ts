@@ -54,9 +54,13 @@ export const useAdminAuthStore = defineStore('admin-auth', () => {
     try {
       await request<{ status: boolean }>('/api/auth/admin-logout', { method: 'POST' })
     } finally {
-      profile.value = null
-      initialized.value = true
+      clearSession()
     }
+  }
+
+  function clearSession() {
+    profile.value = null
+    initialized.value = true
   }
 
   return {
@@ -67,6 +71,7 @@ export const useAdminAuthStore = defineStore('admin-auth', () => {
     isAuthenticated,
     bootstrap,
     login,
-    logout
+    logout,
+    clearSession
   }
 })

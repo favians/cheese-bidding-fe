@@ -51,7 +51,7 @@ player2: player2 / player123
 
 ## Environment
 
-Nuxt proxies `/api/v1/**` to backend.
+Nuxt proxies `/api/v1/**` and the V1-compatible CheesePayout `/api/external/**` endpoints to backend.
 
 Runtime config:
 
@@ -73,8 +73,20 @@ Production notes:
 
 - browser should call FE origin only
 - Nuxt/Nitro forwards `/api/v1/**` to BE through `NUXT_BACKEND_BASE_URL`
+- Nuxt/Nitro forwards `/api/external/incoming-balances` and `/api/external/item-debits` to BE for CheesePayout compatibility
 - SSE uses `/api/v1/client/events?session_id=` through the same proxy
 - proxy/load balancer must keep SSE connections open and avoid response buffering
+
+External CheesePayout endpoints:
+
+```text
+POST /api/external/incoming-balances
+POST /api/external/item-debits
+POST /api/v1/external/incoming-balances
+POST /api/v1/external/item-debits
+```
+
+These require backend `INCOMING_BALANCE_API_SECRET` and request header `X-Cheese-Signature`.
 
 ## Setup
 
