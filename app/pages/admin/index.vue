@@ -86,7 +86,7 @@ async function endSession(id: string) {
     />
 
     <div
-      v-if="loading"
+      v-if="loading && !sessions.length"
       class="py-10 text-center opacity-70"
     >
       Loading…
@@ -185,30 +185,11 @@ async function endSession(id: string) {
         </template>
       </AdminDataTable>
 
-      <div
-        v-if="pagination && pagination.page_total > 1"
-        class="mt-4 flex items-center justify-between"
-      >
-        <UButton
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-chevron-left"
-          label="Prev"
-          :disabled="!pagination.prev_page || loading"
-          @click="loadSessions(pagination.page - 1)"
-        />
-        <span class="text-sm opacity-70">
-          Page {{ pagination.page }} / {{ pagination.page_total }}
-        </span>
-        <UButton
-          color="neutral"
-          variant="soft"
-          trailing-icon="i-lucide-chevron-right"
-          label="Next"
-          :disabled="!pagination.next_page || loading"
-          @click="loadSessions(pagination.page + 1)"
-        />
-      </div>
+      <AdminPagination
+        :pagination="pagination"
+        :loading="loading"
+        @change="loadSessions"
+      />
     </div>
   </main>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Balance, CreateIncomingRequest, IncomingBalance, IncomingStatus, LedgerEntry, Pagination, Withdrawal, WithdrawalStatus } from '#shared/types/api'
+import type { Balance, CreateIncomingRequest, IncomingBalance, IncomingStatus, LedgerEntry, Withdrawal, WithdrawalStatus } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
@@ -142,12 +142,6 @@ async function loadMoney() {
     incomingStatus: incomingStatusFilter.value,
     withdrawalStatus: withdrawalStatusFilter.value
   })
-}
-
-function pageLabel(meta: Pagination | null) {
-  if (!meta) return 'Page 1'
-  if (meta.page_total > 0) return `Page ${meta.page} / ${meta.page_total}`
-  return `Page ${meta.page}`
 }
 
 function loadBalancePage(page: number) {
@@ -399,30 +393,11 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           </span>
         </template>
       </AdminDataTable>
-      <div
-        v-if="balancePagination"
-        class="admin-money-pagination"
-      >
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-chevron-left"
-          label="Prev"
-          :disabled="!balancePagination.prev_page || loading"
-          @click="loadBalancePage(balancePagination.page - 1)"
-        />
-        <span>{{ pageLabel(balancePagination) }}</span>
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          trailing-icon="i-lucide-chevron-right"
-          label="Next"
-          :disabled="!balancePagination.next_page || loading"
-          @click="loadBalancePage(balancePagination.page + 1)"
-        />
-      </div>
+      <AdminPagination
+        :pagination="balancePagination"
+        :loading="loading"
+        @change="loadBalancePage"
+      />
     </section>
 
     <!-- Ledger -->
@@ -480,30 +455,11 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           {{ formatDate((row as LedgerEntry).created_at) }}
         </template>
       </AdminDataTable>
-      <div
-        v-if="ledgerPagination"
-        class="admin-money-pagination"
-      >
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-chevron-left"
-          label="Prev"
-          :disabled="!ledgerPagination.prev_page || loading"
-          @click="loadLedgerPage(ledgerPagination.page - 1)"
-        />
-        <span>{{ pageLabel(ledgerPagination) }}</span>
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          trailing-icon="i-lucide-chevron-right"
-          label="Next"
-          :disabled="!ledgerPagination.next_page || loading"
-          @click="loadLedgerPage(ledgerPagination.page + 1)"
-        />
-      </div>
+      <AdminPagination
+        :pagination="ledgerPagination"
+        :loading="loading"
+        @change="loadLedgerPage"
+      />
     </section>
 
     <!-- Incoming payouts -->
@@ -587,30 +543,11 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           >No action</span>
         </template>
       </AdminDataTable>
-      <div
-        v-if="incomingPagination"
-        class="admin-money-pagination"
-      >
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-chevron-left"
-          label="Prev"
-          :disabled="!incomingPagination.prev_page || loading"
-          @click="loadIncomingPage(incomingPagination.page - 1)"
-        />
-        <span>{{ pageLabel(incomingPagination) }}</span>
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          trailing-icon="i-lucide-chevron-right"
-          label="Next"
-          :disabled="!incomingPagination.next_page || loading"
-          @click="loadIncomingPage(incomingPagination.page + 1)"
-        />
-      </div>
+      <AdminPagination
+        :pagination="incomingPagination"
+        :loading="loading"
+        @change="loadIncomingPage"
+      />
     </section>
 
     <!-- Withdrawals -->
@@ -685,30 +622,11 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
           >No action</span>
         </template>
       </AdminDataTable>
-      <div
-        v-if="withdrawalPagination"
-        class="admin-money-pagination"
-      >
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-chevron-left"
-          label="Prev"
-          :disabled="!withdrawalPagination.prev_page || loading"
-          @click="loadWithdrawalPage(withdrawalPagination.page - 1)"
-        />
-        <span>{{ pageLabel(withdrawalPagination) }}</span>
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          trailing-icon="i-lucide-chevron-right"
-          label="Next"
-          :disabled="!withdrawalPagination.next_page || loading"
-          @click="loadWithdrawalPage(withdrawalPagination.page + 1)"
-        />
-      </div>
+      <AdminPagination
+        :pagination="withdrawalPagination"
+        :loading="loading"
+        @change="loadWithdrawalPage"
+      />
     </section>
   </main>
 </template>

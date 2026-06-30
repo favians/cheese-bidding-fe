@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CreateWithdrawalRequest, WithdrawalStatus, LedgerEntry, Pagination } from '#shared/types/api'
+import type { CreateWithdrawalRequest, WithdrawalStatus, LedgerEntry } from '#shared/types/api'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -30,12 +30,6 @@ function ledgerSourceLabel(entry: LedgerEntry) {
 
 function ledgerAmountClass(entry: LedgerEntry) {
   return entry.type === 'credit' ? 'text-green-400' : 'text-red-400'
-}
-
-function pageLabel(meta: Pagination | null) {
-  if (!meta) return 'Page 1'
-  if (meta.page_total > 0) return `Page ${meta.page} / ${meta.page_total}`
-  return `Page ${meta.page}`
 }
 
 async function submit() {
@@ -191,30 +185,11 @@ async function submit() {
           </UBadge>
         </div>
       </div>
-      <div
-        v-if="withdrawalPagination"
-        class="wallet-pagination"
-      >
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-chevron-left"
-          label="Prev"
-          :disabled="!withdrawalPagination.prev_page || loading"
-          @click="wallet.loadWithdrawals(withdrawalPagination.page - 1)"
-        />
-        <span>{{ pageLabel(withdrawalPagination) }}</span>
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          trailing-icon="i-lucide-chevron-right"
-          label="Next"
-          :disabled="!withdrawalPagination.next_page || loading"
-          @click="wallet.loadWithdrawals(withdrawalPagination.page + 1)"
-        />
-      </div>
+      <AdminPagination
+        :pagination="withdrawalPagination"
+        :loading="loading"
+        @change="wallet.loadWithdrawals"
+      />
     </section>
 
     <section>
@@ -253,30 +228,11 @@ async function submit() {
           <span class="opacity-50">bal {{ entry.balance_after }}</span>
         </div>
       </div>
-      <div
-        v-if="ledgerPagination"
-        class="wallet-pagination"
-      >
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          icon="i-lucide-chevron-left"
-          label="Prev"
-          :disabled="!ledgerPagination.prev_page || loading"
-          @click="wallet.loadLedger(ledgerPagination.page - 1)"
-        />
-        <span>{{ pageLabel(ledgerPagination) }}</span>
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="soft"
-          trailing-icon="i-lucide-chevron-right"
-          label="Next"
-          :disabled="!ledgerPagination.next_page || loading"
-          @click="wallet.loadLedger(ledgerPagination.page + 1)"
-        />
-      </div>
+      <AdminPagination
+        :pagination="ledgerPagination"
+        :loading="loading"
+        @change="wallet.loadLedger"
+      />
     </section>
   </main>
 </template>

@@ -824,3 +824,21 @@ body::after {
     padding: 10px;
   }
 }
+
+/* Shared table pagination: Prev · Page · Next grouped at the bottom-right. */
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.admin-pagination-label {
+  min-width: 4.5ch;
+  color: var(--cb-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
