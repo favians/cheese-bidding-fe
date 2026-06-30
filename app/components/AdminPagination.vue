@@ -17,10 +17,11 @@ const emit = defineEmits<{
     class="admin-pagination"
   >
     <UButton
-      size="xs"
+      size="lg"
       color="neutral"
       variant="soft"
       icon="i-lucide-chevron-left"
+      class="admin-pagination-button"
       :disabled="!pagination.prev_page || loading"
       aria-label="Previous page"
       @click="emit('change', pagination.page - 1)"
@@ -29,10 +30,11 @@ const emit = defineEmits<{
       {{ pagination.page }} / {{ pagination.page_total }}
     </span>
     <UButton
-      size="xs"
+      size="lg"
       color="neutral"
       variant="soft"
       icon="i-lucide-chevron-right"
+      class="admin-pagination-button"
       :disabled="!pagination.next_page || loading"
       aria-label="Next page"
       @click="emit('change', pagination.page + 1)"

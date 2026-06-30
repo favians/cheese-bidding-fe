@@ -30,8 +30,8 @@ async function logout() {
         🧀
       </div>
       <div class="admin-navbar-title">
-        <span>Cheese GDKP</span>
         <h1>{{ title }}</h1>
+        <span>{{ subtitle ?? (adminAuth.profile?.username ? `${adminAuth.profile.username} · admin` : 'admin') }}</span>
       </div>
     </div>
 
@@ -54,13 +54,6 @@ async function logout() {
 
     <div class="admin-navbar-actions">
       <slot name="actions" />
-      <div class="admin-navbar-user">
-        <UIcon
-          name="i-lucide-shield-check"
-          class="admin-navbar-user-icon"
-        />
-        <span>{{ subtitle ?? (adminAuth.profile?.username ? `${adminAuth.profile.username} · admin` : 'admin') }}</span>
-      </div>
       <UButton
         color="neutral"
         variant="ghost"

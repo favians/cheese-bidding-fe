@@ -135,9 +135,32 @@
   border-radius: 9px;
   background: rgba(0, 0, 0, 0.22);
   color: #f8e8c2;
+  cursor: pointer;
   padding: 8px 10px;
   text-align: left;
   transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+.session-faction-picker,
+.session-compact-picker {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(112px, max-content));
+  width: auto;
+}
+
+.session-faction-picker .session-instance-choice,
+.session-compact-picker .session-instance-choice {
+  min-height: 38px;
+  padding: 7px 12px;
+}
+
+.session-date-picker-trigger,
+.session-date-picker-trigger input {
+  cursor: pointer;
+}
+
+.session-date-picker-trigger {
+  width: 100%;
 }
 
 .session-instance-choice:hover,

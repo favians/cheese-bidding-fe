@@ -107,7 +107,6 @@ body::after {
 
 .admin-navbar-brand,
 .admin-navbar-actions,
-.admin-navbar-user,
 .admin-navbar-links {
   display: flex;
   align-items: center;
@@ -137,19 +136,21 @@ body::after {
 
 .admin-navbar-title {
   display: grid;
+  gap: 3px;
   min-width: 0;
 }
 
 .admin-navbar-title span {
-  color: var(--cb-theme);
-  font-size: 0.68rem;
-  font-weight: 1000;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  overflow: hidden;
+  color: rgba(255, 247, 237, 0.68);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-navbar-title h1 {
-  margin: 2px 0 0;
+  margin: 0;
   overflow: hidden;
   color: #fff7ed;
   font-size: clamp(1.18rem, 2.2vw, 1.55rem);
@@ -176,30 +177,6 @@ body::after {
   justify-content: flex-end;
   gap: 8px;
   min-width: 0;
-}
-
-.admin-navbar-user {
-  gap: 7px;
-  min-width: 0;
-  max-width: 260px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.055);
-  color: rgba(255, 247, 237, 0.72);
-  font-size: 0.78rem;
-  font-weight: 850;
-  padding: 7px 10px;
-}
-
-.admin-navbar-user span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.admin-navbar-user-icon {
-  flex: 0 0 auto;
-  color: var(--cb-theme);
 }
 
 .brand {
@@ -805,11 +782,6 @@ body::after {
     flex-direction: column;
   }
 
-  .admin-navbar-user {
-    max-width: none;
-    justify-content: center;
-  }
-
   .profile-header-actions {
     align-self: center;
   }
@@ -832,6 +804,27 @@ body::after {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+.admin-pagination-button {
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.admin-pagination-button:disabled,
+.admin-pagination-button[disabled],
+.admin-pagination-button[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.admin-pagination-button svg,
+.admin-pagination-button span[class*="i-lucide"],
+.admin-pagination-button [class*="i-lucide"] {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 28px !important;
+  stroke-width: 2.5;
 }
 
 .admin-pagination-label {
