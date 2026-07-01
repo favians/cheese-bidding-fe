@@ -1,0 +1,95 @@
+/* Per-session raid theme (ported from V1). The session's primary instance sets
+   body[data-instance-theme]; each block overrides the gold defaults declared in
+   identity.css (--cb-theme*, --cb-bg-*, --cb-backdrop). Backdrops are the raid
+   loading screens hosted on warcraft.wiki.gg. */
+
+body[data-instance-theme="karazhan"] {
+  --cb-theme: #fbbf24;
+  --cb-theme-hot: #a16207;
+  --cb-theme-rgb: 251, 191, 36;
+  --cb-theme-hot-rgb: 251, 191, 36;
+  --cb-bg-1: #12080d;
+  --cb-bg-2: #2f1514;
+  --cb-bg-3: #56310b;
+  --cb-bg-4: #090305;
+  --cb-backdrop: url("https://warcraft.wiki.gg/images/Karazhan_loading_screen.jpg");
+  --cb-backdrop-opacity: 0.30;
+}
+
+body[data-instance-theme="gruul-magtheridon"] {
+  --cb-theme: #f97316;
+  --cb-theme-hot: #b91c1c;
+  --cb-theme-rgb: 249, 115, 22;
+  --cb-theme-hot-rgb: 249, 115, 22;
+  --cb-bg-1: #100503;
+  --cb-bg-2: #37130b;
+  --cb-bg-3: #5b1b0a;
+  --cb-bg-4: #090201;
+  --cb-backdrop: url("https://warcraft.wiki.gg/images/Hellfire_Citadel_loading_screen.jpg");
+  --cb-backdrop-opacity: 0.30;
+}
+
+body[data-instance-theme="ssc"] {
+  --cb-theme: #22d3ee;
+  --cb-theme-hot: #67e8f9;
+  --cb-theme-rgb: 34, 211, 238;
+  --cb-theme-hot-rgb: 103, 232, 249;
+  --cb-bg-1: #02070b;
+  --cb-bg-2: #04131a;
+  --cb-bg-3: #082f3a;
+  --cb-bg-4: #020506;
+  --cb-backdrop: url("https://warcraft.wiki.gg/images/Coilfang_Reservoir_loading_screen.jpg");
+  --cb-backdrop-opacity: 0.32;
+}
+
+body[data-instance-theme="tempestkeep"] {
+  --cb-theme: #a78bfa;
+  --cb-theme-hot: #7c3aed;
+  --cb-theme-rgb: 167, 139, 250;
+  --cb-theme-hot-rgb: 167, 139, 250;
+  --cb-bg-1: #080318;
+  --cb-bg-2: #151138;
+  --cb-bg-3: #312e81;
+  --cb-bg-4: #05020d;
+  --cb-backdrop: url("https://warcraft.wiki.gg/images/Tempest_Keep_loading_screen.jpg");
+  --cb-backdrop-opacity: 0.30;
+}
+
+body[data-instance-theme="blacktemple"] {
+  --cb-theme: #84cc16;
+  --cb-theme-hot: #4d7c0f;
+  --cb-theme-rgb: 132, 204, 22;
+  --cb-theme-hot-rgb: 132, 204, 22;
+  --cb-bg-1: #030604;
+  --cb-bg-2: #0f1d0b;
+  --cb-bg-3: #253b0b;
+  --cb-bg-4: #020302;
+  --cb-backdrop: url("https://warcraft.wiki.gg/images/Black_Temple_loading_screen.jpg");
+  --cb-backdrop-opacity: 0.30;
+}
+
+body[data-instance-theme="hyjal"] {
+  --cb-theme: #34d399;
+  --cb-theme-hot: #15803d;
+  --cb-theme-rgb: 52, 211, 153;
+  --cb-theme-hot-rgb: 167, 243, 208;
+  --cb-bg-1: #020806;
+  --cb-bg-2: #082018;
+  --cb-bg-3: #14532d;
+  --cb-bg-4: #020403;
+  --cb-backdrop: url("https://warcraft.wiki.gg/images/Mount_Hyjal_loading_screen.jpg");
+  --cb-backdrop-opacity: 0.30;
+}
+
+body[data-instance-theme="sunwell"] {
+  --cb-theme: #fde047;
+  --cb-theme-hot: #f97316;
+  --cb-theme-rgb: 253, 224, 71;
+  --cb-theme-hot-rgb: 254, 240, 138;
+  --cb-bg-1: #120805;
+  --cb-bg-2: #3d1608;
+  --cb-bg-3: #854d0e;
+  --cb-bg-4: #070302;
+  --cb-backdrop: url("https://warcraft.wiki.gg/images/Sunwell_Plateau_loading_screen.jpg");
+  --cb-backdrop-opacity: 0.30;
+}

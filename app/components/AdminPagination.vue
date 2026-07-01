@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Pagination } from '#shared/types/api'
 
-defineProps<{
+const props = defineProps<{
   pagination: Pagination | null
   loading?: boolean
 }>()
@@ -9,6 +9,17 @@ defineProps<{
 const emit = defineEmits<{
   change: [page: number]
 }>()
+
+const currentPage = computed(() => {
+  if (!props.pagination) return 1
+  return Math.min(props.pagination.page, Math.max(props.pagination.page_total, 1))
+})
+
+function goToPage(page: number) {
+  if (!props.pagination) return
+  const lastPage = Math.max(props.pagination.page_total, 1)
+  emit('change', Math.min(Math.max(page, 1), lastPage))
+}
 </script>
 
 <template>
@@ -24,10 +35,10 @@ const emit = defineEmits<{
       class="admin-pagination-button"
       :disabled="!pagination.prev_page || loading"
       aria-label="Previous page"
-      @click="emit('change', pagination.page - 1)"
+      @click="goToPage(currentPage - 1)"
     />
     <span class="admin-pagination-label">
-      {{ pagination.page }} / {{ pagination.page_total }}
+      {{ currentPage }} / {{ pagination.page_total }}
     </span>
     <UButton
       size="lg"
@@ -37,7 +48,7 @@ const emit = defineEmits<{
       class="admin-pagination-button"
       :disabled="!pagination.next_page || loading"
       aria-label="Next page"
-      @click="emit('change', pagination.page + 1)"
+      @click="goToPage(currentPage + 1)"
     />
   </div>
 </template>

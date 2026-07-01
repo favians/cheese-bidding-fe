@@ -109,6 +109,7 @@ export interface Auction {
   item_id: number
   item_icon_path: string
   item_icon_url: string
+  item_boss_name: string
   initial_buyer_name: string
   initial_price: number
   status: AuctionStatus
@@ -133,6 +134,7 @@ export interface Prebid {
   item_id: number
   item_icon_path: string
   item_icon_url: string
+  item_boss_name: string
   status: PrebidStatus
   min_bid: number
   bid_increment: number
@@ -233,6 +235,8 @@ export interface Item {
   boss_name: string
   icon_path: string
   icon_url: string
+  default_min_bid: number
+  default_prebid_opening_price: number
 }
 
 // --- money (amounts are decimal strings from the backend) ---
@@ -245,6 +249,7 @@ export interface Balance {
 export interface BalanceAdjustmentRequest {
   amount: string
   reason: string
+  password: string
 }
 
 export interface LedgerEntry {
@@ -305,6 +310,7 @@ export interface CreateIncomingRequest {
   week_id?: string
   amount: number
   note?: string
+  password?: string
 }
 
 export interface UpdateWithdrawalStatusRequest {
@@ -323,6 +329,8 @@ export interface ClientAdmin {
   discord_id: string
   is_active: boolean
   is_favorite: boolean
+  balance_amount: string
+  incoming_balance_amount: string
   created_at: string
 }
 
@@ -330,4 +338,16 @@ export interface AdminCreateClientRequest {
   username: string
   password: string
   discord_id: string
+}
+
+export interface AdminUpdateClientRequest {
+  username: string
+  discord_id: string
+}
+
+export interface ClientSession {
+  id: string
+  code: string
+  title: string
+  status: string
 }

@@ -8,7 +8,10 @@ type PlayerTab = 'bid' | 'prebid'
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const bidding = useBiddingStore()
-const { activeAuctions, openPrebids, closedAuctions, lastOutbid, lastNewItem, sessionUnavailable, sessionEnded, loading, bidding: submitting, error } = storeToRefs(bidding)
+const { activeAuctions, openPrebids, closedAuctions, lastOutbid, lastNewItem, sessionUnavailable, sessionEnded, sessionInfo, loading, bidding: submitting, error } = storeToRefs(bidding)
+
+// reflect the session's raid theme onto the page (V1 parity)
+useInstanceTheme(() => sessionInfo.value?.title)
 
 const toast = useToast()
 let outbidAudio: HTMLAudioElement | undefined
@@ -39,6 +42,7 @@ onMounted(() => {
   newItemAudio = new Audio('/new-item.mp3')
   newItemAudio.preload = 'auto'
   bidding.load(sessionId.value)
+  bidding.loadSession(sessionId.value)
   bidding.loadMyMember(sessionId.value)
   bidding.loadMembers(sessionId.value)
   bidding.connect(sessionId.value)
@@ -85,7 +89,17 @@ function secondsLeft(endsAt?: string | null) {
 function countdown(endsAt?: string | null) {
   const total = secondsLeft(endsAt)
   if (total <= 0) return 'closing…'
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+  return formatCountdown(total)
+}
+
+function formatCountdown(total: number) {
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
 function iconUrl(item: Auction | Prebid) {
@@ -262,6 +276,12 @@ function canSubmitPrebid(item: Prebid) {
                     Winning
                   </span>
                 </div>
+                <div
+                  v-if="item.item_boss_name"
+                  class="loot-boss"
+                >
+                  {{ item.item_boss_name }}
+                </div>
                 <div class="loot-sub">
                   Min {{ item.min_bid }} · Inc {{ item.bid_increment }} · {{ item.bid_count }} bids
                 </div>
@@ -352,6 +372,12 @@ function canSubmitPrebid(item: Prebid) {
                   >
                     Leading
                   </span>
+                </div>
+                <div
+                  v-if="item.item_boss_name"
+                  class="loot-boss"
+                >
+                  {{ item.item_boss_name }}
                 </div>
                 <div class="loot-sub">
                   Prebid · Inc {{ item.bid_increment }} · {{ item.bid_count }} bids

@@ -31,6 +31,9 @@ export class ApiClientError extends Error {
   }
 }
 
+const apiErrorToastCooldownMs = 1500
+const recentApiErrorToasts = new Map<string, number>()
+
 function isInternalApiPath(path: string) {
   return path === '/api/v1/internal' || path.startsWith('/api/v1/internal/')
 }
@@ -57,6 +60,25 @@ async function handleAuthFailure(path: string, error: ApiClientError) {
   }
 }
 
+function notifyApiError(error: ApiClientError) {
+  if (!import.meta.client) return
+
+  const now = Date.now()
+  const key = `${error.status}:${error.message}`
+  const lastShownAt = recentApiErrorToasts.get(key) ?? 0
+  if (now - lastShownAt < apiErrorToastCooldownMs) return
+  recentApiErrorToasts.set(key, now)
+
+  const toast = useToast()
+  const isDuplicate = error.status === 409 || /duplicate/i.test(error.message)
+  toast.add({
+    title: isDuplicate ? 'Duplicate data' : 'Request failed',
+    description: error.message,
+    color: 'error',
+    icon: isDuplicate ? 'i-lucide-copy-x' : 'i-lucide-circle-alert'
+  })
+}
+
 export function useApi() {
   async function request<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
     try {
@@ -67,6 +89,7 @@ export function useApi() {
       return envelope.data
     } catch (error: unknown) {
       const apiError = toApiError(error)
+      notifyApiError(apiError)
       await handleAuthFailure(path, apiError)
       throw apiError
     }
@@ -82,6 +105,7 @@ export function useApi() {
       return { data: envelope.data, pagination: envelope.pagination ?? null }
     } catch (error: unknown) {
       const apiError = toApiError(error)
+      notifyApiError(apiError)
       await handleAuthFailure(path, apiError)
       throw apiError
     }

@@ -4,13 +4,31 @@ import type { CreateWithdrawalRequest, WithdrawalStatus, LedgerEntry } from '#sh
 definePageMeta({ middleware: 'auth' })
 
 const wallet = useWalletStore()
-const { balance, ledger, withdrawals, ledgerPagination, withdrawalPagination, config, loading, submitting, error } = storeToRefs(wallet)
+const {
+  balance,
+  incoming,
+  ledger,
+  withdrawals,
+  incomingPagination,
+  ledgerPagination,
+  withdrawalPagination,
+  config,
+  loading,
+  submitting,
+  error
+} = storeToRefs(wallet)
 
 const form = reactive<CreateWithdrawalRequest>({ amount: 0, payment_method: '', note: '' })
 
 onMounted(() => wallet.load())
 
 const maintenance = computed(() => config.value?.maintenance_mode ?? false)
+const pendingIncoming = computed(() => {
+  const total = incoming.value
+    .filter(row => row.status === 'pending')
+    .reduce((sum, row) => sum + Number(row.amount || 0), 0)
+  return Number.isFinite(total) ? total : 0
+})
 
 const statusColor: Record<WithdrawalStatus, 'warning' | 'info' | 'error' | 'success'> = {
   pending: 'warning',
@@ -29,7 +47,32 @@ function ledgerSourceLabel(entry: LedgerEntry) {
 }
 
 function ledgerAmountClass(entry: LedgerEntry) {
-  return entry.type === 'credit' ? 'text-green-400' : 'text-red-400'
+  return entry.type === 'credit' ? 'wallet-money wallet-money--credit' : 'wallet-money wallet-money--debit'
+}
+
+function formatMoney(value: string | number) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return String(value)
+  return numeric.toLocaleString('en-US')
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
+}
+
+function incomingStatusColor(status: string) {
+  if (status === 'pending') return 'warning'
+  if (status === 'confirmed') return 'success'
+  return 'neutral'
 }
 
 async function submit() {
@@ -72,22 +115,133 @@ async function submit() {
       class="mb-4"
     />
 
-    <UCard class="profile-hero-card mb-6">
-      <div class="flex items-center justify-between gap-4">
-        <div>
-          <div class="text-sm opacity-70">
-            Available balance
+    <section class="wallet-content-panel">
+      <div class="wallet-section-heading">
+        <span>Balance</span>
+        <h2>Balance Information</h2>
+      </div>
+
+      <div class="wallet-balance-summary">
+        <article class="wallet-balance-card">
+          <span>Current Balance</span>
+          <strong :class="Number(balance) < 0 ? 'wallet-money--debit' : 'wallet-money--credit'">
+            {{ formatMoney(balance) }}
+          </strong>
+          <small>{{ Number(balance) < 0 ? 'Amount owed' : 'Available credit' }}</small>
+        </article>
+        <article class="wallet-info-card">
+          <span>Incoming</span>
+          <strong :class="pendingIncoming > 0 ? 'wallet-money--incoming' : ''">
+            {{ formatMoney(pendingIncoming) }}
+          </strong>
+          <small>Known payout not added yet. Becomes real balance after admin confirms payment.</small>
+        </article>
+      </div>
+
+      <section class="wallet-history-card">
+        <div class="wallet-card-head">
+          <h2>Incoming Balance</h2>
+          <span>Pending {{ formatMoney(pendingIncoming) }}</span>
+        </div>
+
+        <div
+          v-if="loading && !incoming.length"
+          class="wallet-empty"
+        >
+          Loading…
+        </div>
+        <div
+          v-else-if="!incoming.length"
+          class="wallet-empty"
+        >
+          No incoming balance yet.
+        </div>
+        <div
+          v-else
+          class="wallet-table wallet-incoming-table"
+        >
+          <div class="wallet-table-row wallet-table-head wallet-incoming-row">
+            <span>Amount</span>
+            <span>Week</span>
+            <span>Status</span>
+            <span>Note</span>
+            <span>Created</span>
           </div>
-          <div class="text-3xl font-bold">
-            {{ balance }}
+          <div
+            v-for="row in incoming"
+            :key="row.id"
+            class="wallet-table-row wallet-incoming-row"
+          >
+            <strong class="wallet-money wallet-money--credit">{{ formatMoney(row.amount) }}</strong>
+            <span>{{ row.week_id || '—' }}</span>
+            <span>
+              <UBadge
+                :color="incomingStatusColor(row.status)"
+                variant="soft"
+              >
+                {{ row.status }}
+              </UBadge>
+            </span>
+            <span>{{ row.note || '—' }}</span>
+            <time>{{ formatDate(row.created_at) }}</time>
           </div>
         </div>
-        <UIcon
-          name="i-lucide-wallet"
-          class="h-10 w-10 opacity-40"
+        <AdminPagination
+          :pagination="incomingPagination"
+          :loading="loading"
+          @change="wallet.loadIncoming"
         />
-      </div>
-    </UCard>
+      </section>
+
+      <section class="wallet-history-card">
+        <div class="wallet-card-head">
+          <h2>Balance History</h2>
+        </div>
+
+        <div
+          v-if="loading && !ledger.length"
+          class="wallet-empty"
+        >
+          Loading…
+        </div>
+        <div
+          v-else-if="!ledger.length"
+          class="wallet-empty"
+        >
+          No balance history yet.
+        </div>
+        <div
+          v-else
+          class="wallet-table wallet-ledger-table"
+        >
+          <div class="wallet-table-row wallet-table-head wallet-ledger-row">
+            <span>Amount</span>
+            <span>Type</span>
+            <span>Session</span>
+            <span>Note</span>
+            <span>After</span>
+            <span>Date</span>
+          </div>
+          <div
+            v-for="entry in ledger"
+            :key="entry.id"
+            class="wallet-table-row wallet-ledger-row"
+          >
+            <span :class="ledgerAmountClass(entry)">{{ formatMoney(entry.amount) }}</span>
+            <span>{{ ledgerSourceLabel(entry) }}</span>
+            <span>{{ entry.session_snapshot || '—' }}</span>
+            <span>{{ entry.note || entry.source || '—' }}</span>
+            <strong>{{ formatMoney(entry.balance_after) }}</strong>
+            <time>{{ formatDate(entry.created_at) }}</time>
+          </div>
+        </div>
+        <AdminPagination
+          :pagination="ledgerPagination"
+          :loading="loading"
+          @change="wallet.loadLedger"
+        />
+      </section>
+    </section>
 
     <UAlert
       v-if="maintenance"
@@ -151,87 +305,48 @@ async function submit() {
       </form>
     </UCard>
 
-    <section class="mb-6">
-      <h2 class="mb-2 text-lg font-semibold">
-        My withdrawals
-      </h2>
+    <section class="wallet-history-card">
+      <div class="wallet-card-head">
+        <h2>Withdrawal History</h2>
+      </div>
       <div
         v-if="!withdrawals.length"
-        class="py-4 text-center text-sm opacity-60"
+        class="wallet-empty"
       >
         No withdrawals yet.
       </div>
       <div
         v-else
-        class="grid gap-2"
+        class="wallet-table wallet-withdrawal-table"
       >
+        <div class="wallet-table-row wallet-table-head wallet-withdrawal-row">
+          <span>Amount</span>
+          <span>Method</span>
+          <span>Status</span>
+          <span>Note</span>
+          <span>Created</span>
+        </div>
         <div
           v-for="wd in withdrawals"
           :key="wd.id"
-          class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm"
+          class="wallet-table-row wallet-withdrawal-row"
         >
-          <span>
-            <strong>{{ wd.amount }}</strong> · {{ wd.payment_method }}
-            <span
-              v-if="wd.admin_note"
-              class="opacity-60"
-            >· {{ wd.admin_note }}</span>
-          </span>
+          <strong>{{ formatMoney(wd.amount) }}</strong>
+          <span>{{ wd.payment_method }}</span>
           <UBadge
             :color="statusColor[wd.status]"
             variant="soft"
           >
             {{ wd.status }}
           </UBadge>
+          <span>{{ wd.note || wd.admin_note || '—' }}</span>
+          <time>{{ formatDate(wd.created_at) }}</time>
         </div>
       </div>
       <AdminPagination
         :pagination="withdrawalPagination"
         :loading="loading"
         @change="wallet.loadWithdrawals"
-      />
-    </section>
-
-    <section>
-      <h2 class="mb-2 text-lg font-semibold">
-        Ledger
-      </h2>
-      <div
-        v-if="loading && !ledger.length"
-        class="py-4 text-center text-sm opacity-60"
-      >
-        Loading…
-      </div>
-      <div
-        v-else-if="!ledger.length"
-        class="py-4 text-center text-sm opacity-60"
-      >
-        No transactions yet.
-      </div>
-      <div
-        v-else
-        class="grid gap-1"
-      >
-        <div
-          v-for="entry in ledger"
-          :key="entry.id"
-          class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm"
-        >
-          <span>
-            <span :class="ledgerAmountClass(entry)">{{ entry.amount }}</span>
-            <span class="ml-2 opacity-70">{{ ledgerSourceLabel(entry) }}</span>
-            <span
-              v-if="entry.note"
-              class="ml-2 opacity-50"
-            >· {{ entry.note }}</span>
-          </span>
-          <span class="opacity-50">bal {{ entry.balance_after }}</span>
-        </div>
-      </div>
-      <AdminPagination
-        :pagination="ledgerPagination"
-        :loading="loading"
-        @change="wallet.loadLedger"
       />
     </section>
   </main>

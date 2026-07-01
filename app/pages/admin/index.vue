@@ -5,6 +5,9 @@ definePageMeta({ middleware: 'admin' })
 
 const sessionsStore = useSessionsStore()
 const { sessions, pagination, loading, error } = storeToRefs(sessionsStore)
+const toast = useToast()
+const endModalOpen = ref(false)
+const endTarget = ref<Session | null>(null)
 
 function loadSessions(page = pagination.value?.page ?? 1) {
   return sessionsStore.load({ page })
@@ -60,12 +63,42 @@ async function copySession(row: Session) {
   }
   const url = new URL('/play', window.location.origin)
   url.searchParams.set('code', row.code)
-  await navigator.clipboard.writeText(url.toString())
+  try {
+    await navigator.clipboard.writeText(url.toString())
+    toast.add({
+      title: 'Session copied',
+      description: `${row.code} copied to clipboard`,
+      color: 'success',
+      icon: 'i-lucide-copy-check'
+    })
+  } catch {
+    toast.add({
+      title: 'Copy failed',
+      description: 'Could not write session link to clipboard',
+      color: 'error',
+      icon: 'i-lucide-circle-alert'
+    })
+  }
 }
 
-async function endSession(id: string) {
+function requestEndSession(row: Session) {
+  endTarget.value = row
+  endModalOpen.value = true
+}
+
+async function confirmEndSession() {
+  if (!endTarget.value) return
   try {
-    await sessionsStore.end(id)
+    const target = endTarget.value
+    await sessionsStore.end(target.id)
+    endModalOpen.value = false
+    endTarget.value = null
+    toast.add({
+      title: 'Session ended',
+      description: `${target.code} is now closed`,
+      color: 'success',
+      icon: 'i-lucide-circle-check'
+    })
   } catch {
     // store exposes error
   }
@@ -178,7 +211,7 @@ async function endSession(id: string) {
                 icon="i-lucide-square"
                 aria-label="End session"
                 class="session-list-action-button"
-                @click.stop="endSession(row.id)"
+                @click.stop="requestEndSession(row)"
               />
             </UTooltip>
           </div>
@@ -191,5 +224,36 @@ async function endSession(id: string) {
         @change="loadSessions"
       />
     </div>
+
+    <UModal
+      v-model:open="endModalOpen"
+      title="End session"
+      description="This closes the session and prevents more bidding."
+    >
+      <template #body>
+        <p class="session-end-confirm-copy">
+          End {{ endTarget?.title || 'this session' }}?
+        </p>
+        <p class="session-end-confirm-meta">
+          Code {{ endTarget?.code || '—' }}
+        </p>
+      </template>
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            label="Cancel"
+            color="neutral"
+            variant="outline"
+            @click="endModalOpen = false"
+          />
+          <UButton
+            label="End session"
+            color="error"
+            :loading="loading"
+            @click="confirmEndSession"
+          />
+        </div>
+      </template>
+    </UModal>
   </main>
 </template>

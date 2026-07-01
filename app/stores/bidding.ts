@@ -1,10 +1,11 @@
-import type { Auction, Prebid, SessionMember } from '#shared/types/api'
+import type { Auction, ClientSession, Prebid, SessionMember } from '#shared/types/api'
 
 export const useBiddingStore = defineStore('bidding', () => {
   const auctions = ref<Auction[]>([])
   const prebids = ref<Prebid[]>([])
   const myMember = ref<SessionMember | null>(null)
   const members = ref<SessionMember[]>([])
+  const sessionInfo = ref<ClientSession | null>(null)
   const loading = ref(false)
   const bidding = ref(false)
   const error = ref('')
@@ -39,6 +40,16 @@ export const useBiddingStore = defineStore('bidding', () => {
       members.value = await request<SessionMember[]>(`/api/v1/client/members?session_id=${encodeURIComponent(sessionId)}`)
     } catch {
       members.value = []
+    }
+  }
+
+  // session info (title drives the raid theme + header)
+  async function loadSession(sessionId: string) {
+    const { request } = useApi()
+    try {
+      sessionInfo.value = await request<ClientSession>(`/api/v1/client/session/${encodeURIComponent(sessionId)}`)
+    } catch {
+      sessionInfo.value = null
     }
   }
 
@@ -209,10 +220,12 @@ export const useBiddingStore = defineStore('bidding', () => {
     sessionEnded,
     myMember,
     members,
+    sessionInfo,
     isMine,
     memberName,
     loadMyMember,
     loadMembers,
+    loadSession,
     loading,
     bidding,
     error,

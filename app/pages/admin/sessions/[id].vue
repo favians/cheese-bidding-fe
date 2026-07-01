@@ -4,7 +4,7 @@ import type { Auction, CreateAuctionRequest, CreatePrebidRequest, Item, Prebid, 
 definePageMeta({ middleware: 'admin' })
 
 type BoardTab = 'active' | 'prebid' | 'results'
-type PrebidAction = 'resolve' | 'cancel' | 'not-dropped' | 'delete-last-bid'
+type PrebidAction = 'resolve' | 'cancel' | 'delete-last-bid'
 
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
@@ -33,6 +33,9 @@ const openPrebids = computed(() => prebids.value.filter(item => item.status === 
 const resolvedPrebids = computed(() => prebids.value.filter(item => item.status !== 'open'))
 const allowedItemInstanceIds = computed(() => sessionInstances.value.map(instance => instance.id))
 const selectedInstances = computed(() => instances.value.filter(instance => allowedItemInstanceIds.value.includes(instance.id)))
+
+// reflect the session's raid theme onto the page (V1 parity)
+useInstanceTheme(() => selectedInstances.value[0]?.name || session.value?.title)
 const isSessionEnded = computed(() => session.value?.status === 'ended')
 const summaryStats = computed(() => summary.value?.stats ?? null)
 const summaryAuctionResults = computed(() => summary.value?.auction_results ?? [])
@@ -104,6 +107,17 @@ const boardRows = computed(() => {
   if (boardTab.value === 'results') return finishedAuctions.value
   return activeAuctions.value
 })
+// group the current board by the item's boss (a section per boss)
+const boardGroups = computed(() => {
+  const groups = new Map<string, Array<Auction | Prebid>>()
+  for (const item of boardRows.value) {
+    const boss = item.item_boss_name || 'Unknown boss'
+    const bucket = groups.get(boss) ?? []
+    bucket.push(item)
+    groups.set(boss, bucket)
+  }
+  return Array.from(groups, ([boss, items]) => ({ boss, items }))
+})
 const joinURL = computed(() => {
   if (!import.meta.client || !session.value?.code) return ''
   const url = new URL('/play', window.location.origin)
@@ -173,7 +187,13 @@ function countdown(endsAt?: string | null) {
   const ms = endMs - now.value
   if (ms <= 0) return 'closing…'
   const total = Math.floor(ms / 1000)
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
 function iconUrl(item: Auction | Prebid) {
@@ -308,9 +328,6 @@ function prebidActionMessage(item: Prebid, action: PrebidAction) {
   }
   if (action === 'delete-last-bid') {
     return `Delete latest prebid for ${item.item_name}?\n\nOnly the newest prebid will be removed.`
-  }
-  if (action === 'not-dropped') {
-    return `Mark ${item.item_name} as not dropped?`
   }
   return `Cancel prebid for ${item.item_name}?`
 }
@@ -665,158 +682,163 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
         </div>
         <div
           v-else
-          class="session-card-list"
+          class="session-boss-groups"
         >
-          <article
-            v-for="item in boardRows"
-            :key="item.id"
-            class="session-auction-card"
-            :class="[
-              item.status,
-              boardTab === 'prebid' ? 'is-prebid' : ''
-            ]"
+          <section
+            v-for="group in boardGroups"
+            :key="group.boss"
+            class="session-boss-group"
           >
-            <div class="session-loot-cell">
-              <div class="session-item-icon">
-                <img
-                  v-if="item.item_id"
-                  :src="iconUrl(item)"
-                  alt=""
-                >
-                <span v-else>?</span>
-              </div>
-              <div class="session-loot-copy">
-                <strong>{{ item.item_name }}</strong>
-                <span>{{ 'bid_increment' in item ? `Increment ${item.bid_increment}` : '' }}</span>
-              </div>
-            </div>
-
-            <div class="session-bid-state">
-              <span>{{ boardTab === 'results' ? 'Final' : 'Current' }}</span>
-              <strong>{{ item.current_bid || ('winning_bid' in item ? item.winning_bid : 0) || '—' }}</strong>
-              <small>by {{ memberName(item.current_winner_member_id || ('winner_member_id' in item ? item.winner_member_id : '')) }}</small>
-            </div>
-
-            <div class="session-timer-cell">
-              <strong v-if="'ends_at' in item && item.status === 'active'">{{ countdown(item.ends_at) }}</strong>
-              <strong v-else>{{ item.status }}</strong>
-              <span>{{ item.bid_count }} bids</span>
-            </div>
-
-            <div
-              v-if="item.status === 'active'"
-              class="session-card-actions"
-            >
-              <UButton
-                size="xs"
-                color="success"
-                variant="soft"
-                icon="i-lucide-check"
-                label="Close"
-                :disabled="isSessionEnded"
-                @click="runAuctionAction(item, 'close')"
-              />
-              <UButton
-                size="xs"
-                color="warning"
-                variant="soft"
-                icon="i-lucide-rotate-ccw"
-                label="Reset"
-                :disabled="isSessionEnded"
-                @click="runAuctionAction(item, 'reset')"
-              />
-              <UButton
-                size="xs"
-                color="error"
-                variant="soft"
-                icon="i-lucide-x"
-                label="Cancel"
-                @click="runAuctionAction(item, 'cancel')"
-              />
-            </div>
-            <div
-              v-else-if="item.status === 'open'"
-              class="session-card-actions"
-            >
-              <UTooltip text="Start live auction">
-                <UButton
-                  size="xs"
-                  color="primary"
-                  variant="soft"
-                  icon="i-lucide-play"
-                  aria-label="Start live auction"
-                  class="session-card-icon-button"
-                  :disabled="isSessionEnded"
-                  @click="runPrebidAction(item, 'resolve')"
-                />
-              </UTooltip>
-              <UTooltip :text="item.bid_count > 1 ? 'Delete latest prebid' : 'Need at least 2 prebids'">
-                <UButton
-                  size="xs"
-                  color="neutral"
-                  variant="soft"
-                  icon="i-lucide-list-x"
-                  aria-label="Delete latest prebid"
-                  class="session-card-icon-button"
-                  :disabled="isSessionEnded || item.bid_count <= 1"
-                  @click="runPrebidAction(item, 'delete-last-bid')"
-                />
-              </UTooltip>
-              <UTooltip text="Mark not dropped">
-                <UButton
-                  size="xs"
-                  color="warning"
-                  variant="soft"
-                  icon="i-lucide-package-x"
-                  aria-label="Mark not dropped"
-                  class="session-card-icon-button"
-                  :disabled="isSessionEnded"
-                  @click="runPrebidAction(item, 'not-dropped')"
-                />
-              </UTooltip>
-              <UTooltip text="Cancel prebid">
-                <UButton
-                  size="xs"
-                  color="error"
-                  variant="soft"
-                  icon="i-lucide-trash-2"
-                  aria-label="Cancel prebid"
-                  class="session-card-icon-button"
-                  @click="runPrebidAction(item, 'cancel')"
-                />
-              </UTooltip>
-            </div>
-            <div
-              v-else
-              class="session-card-result"
-            >
-              <span v-if="'winning_bid' in item && item.winning_bid">Sold {{ item.winning_bid }}</span>
-              <small v-if="'winner_member_id' in item && item.winner_member_id">to {{ memberName(item.winner_member_id) }}</small>
-              <span v-else>{{ item.status }}</span>
-              <div
-                v-if="item.status === 'closed'"
-                class="session-card-result-actions"
+            <header class="session-boss-head">
+              <h4>{{ group.boss }}</h4>
+              <span>{{ group.items.length }}</span>
+            </header>
+            <div class="session-card-list">
+              <article
+                v-for="item in group.items"
+                :key="item.id"
+                class="session-auction-card"
+                :class="[
+                  item.status,
+                  boardTab === 'prebid' ? 'is-prebid' : '',
+                  { 'has-bid': item.bid_count > 0 }
+                ]"
               >
-                <UButton
-                  size="xs"
-                  color="warning"
-                  variant="soft"
-                  icon="i-lucide-rotate-ccw"
-                  label="Reset + refund"
-                  :disabled="isSessionEnded"
-                  @click="runAuctionAction(item, 'reset')"
-                />
-                <UButton
-                  size="xs"
-                  color="error"
-                  variant="soft"
-                  icon="i-lucide-x"
-                  label="Cancel + refund"
-                  @click="runAuctionAction(item, 'cancel')"
-                />
-              </div>
+                <div class="session-loot-cell">
+                  <div class="session-item-icon">
+                    <img
+                      v-if="item.item_id"
+                      :src="iconUrl(item)"
+                      alt=""
+                    >
+                    <span v-else>?</span>
+                  </div>
+                  <div class="session-loot-copy">
+                    <strong>{{ item.item_name }}</strong>
+                    <span
+                      v-if="item.item_boss_name"
+                      class="session-loot-boss"
+                    >{{ item.item_boss_name }}</span>
+                    <span>{{ 'bid_increment' in item ? `Increment ${item.bid_increment}` : '' }}</span>
+                  </div>
+                </div>
+
+                <div class="session-bid-state">
+                  <span>{{ boardTab === 'results' ? 'Final' : 'Current' }}</span>
+                  <strong>{{ item.current_bid || ('winning_bid' in item ? item.winning_bid : 0) || '—' }}</strong>
+                  <small>by {{ memberName(item.current_winner_member_id || ('winner_member_id' in item ? item.winner_member_id : '')) }}</small>
+                </div>
+
+                <div class="session-timer-cell">
+                  <strong v-if="'ends_at' in item && item.status === 'active'">{{ countdown(item.ends_at) }}</strong>
+                  <strong v-else>{{ item.status }}</strong>
+                  <span>{{ item.bid_count }} bids</span>
+                </div>
+
+                <div
+                  v-if="item.status === 'active'"
+                  class="session-card-actions"
+                >
+                  <UButton
+                    size="xs"
+                    color="success"
+                    variant="soft"
+                    icon="i-lucide-check"
+                    label="Close"
+                    :disabled="isSessionEnded"
+                    @click="runAuctionAction(item, 'close')"
+                  />
+                  <UButton
+                    size="xs"
+                    color="warning"
+                    variant="soft"
+                    icon="i-lucide-rotate-ccw"
+                    label="Reset"
+                    :disabled="isSessionEnded"
+                    @click="runAuctionAction(item, 'reset')"
+                  />
+                  <UButton
+                    size="xs"
+                    color="error"
+                    variant="soft"
+                    icon="i-lucide-x"
+                    label="Cancel"
+                    @click="runAuctionAction(item, 'cancel')"
+                  />
+                </div>
+                <div
+                  v-else-if="item.status === 'open'"
+                  class="session-card-actions"
+                >
+                  <UTooltip text="Start live auction">
+                    <UButton
+                      size="xs"
+                      color="primary"
+                      variant="soft"
+                      icon="i-lucide-play"
+                      aria-label="Start live auction"
+                      class="session-card-icon-button"
+                      :disabled="isSessionEnded"
+                      @click="runPrebidAction(item, 'resolve')"
+                    />
+                  </UTooltip>
+                  <UTooltip :text="item.bid_count > 1 ? 'Delete latest prebid' : 'Need at least 2 prebids'">
+                    <UButton
+                      size="xs"
+                      color="neutral"
+                      variant="soft"
+                      icon="i-lucide-list-x"
+                      aria-label="Delete latest prebid"
+                      class="session-card-icon-button"
+                      :disabled="isSessionEnded || item.bid_count <= 1"
+                      @click="runPrebidAction(item, 'delete-last-bid')"
+                    />
+                  </UTooltip>
+                  <UTooltip text="Cancel prebid">
+                    <UButton
+                      size="xs"
+                      color="error"
+                      variant="soft"
+                      icon="i-lucide-trash-2"
+                      aria-label="Cancel prebid"
+                      class="session-card-icon-button"
+                      @click="runPrebidAction(item, 'cancel')"
+                    />
+                  </UTooltip>
+                </div>
+                <div
+                  v-else
+                  class="session-card-result"
+                >
+                  <span v-if="'winning_bid' in item && item.winning_bid">Sold {{ item.winning_bid }}</span>
+                  <small v-if="'winner_member_id' in item && item.winner_member_id">to {{ memberName(item.winner_member_id) }}</small>
+                  <span v-else>{{ item.status }}</span>
+                  <div
+                    v-if="item.status === 'closed'"
+                    class="session-card-result-actions"
+                  >
+                    <UButton
+                      size="xs"
+                      color="warning"
+                      variant="soft"
+                      icon="i-lucide-rotate-ccw"
+                      label="Reset + refund"
+                      :disabled="isSessionEnded"
+                      @click="runAuctionAction(item, 'reset')"
+                    />
+                    <UButton
+                      size="xs"
+                      color="error"
+                      variant="soft"
+                      icon="i-lucide-x"
+                      label="Cancel + refund"
+                      @click="runAuctionAction(item, 'cancel')"
+                    />
+                  </div>
+                </div>
+              </article>
             </div>
-          </article>
+          </section>
         </div>
 
         <div

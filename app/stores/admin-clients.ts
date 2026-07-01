@@ -1,6 +1,7 @@
 import type {
   ClientAdmin,
   AdminCreateClientRequest,
+  AdminUpdateClientRequest,
   Pagination,
   ClientCharacter,
   SaveClientCharacterRequest,
@@ -45,8 +46,13 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
       if (params.status && params.status !== 'all') query.status = params.status
       if (params.search?.trim()) query.search = params.search.trim()
       const { data, pagination: meta } = await requestPaged<ClientAdmin[]>('/api/v1/internal/clients', { query })
+      if (meta && meta.page_total > 0 && meta.page > meta.page_total) {
+        await load({ ...params, page: meta.page_total })
+        return
+      }
       clients.value = data ?? []
       pagination.value = meta
+      await loadMoneySnapshots(clients.value)
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Failed to load players'
     } finally {
@@ -71,14 +77,19 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     }
   }
 
-  async function updateDiscord(id: number, discordId: string) {
+  async function updateProfile(id: number, payload: AdminUpdateClientRequest) {
     const { request } = useApi()
+    saving.value = true
     error.value = ''
     try {
-      const row = await request<ClientAdmin>(`/api/v1/internal/clients/${id}`, { method: 'PUT', body: { discord_id: discordId } })
+      const row = await request<ClientAdmin>(`/api/v1/internal/clients/${id}`, { method: 'PUT', body: payload })
       patch(row)
+      return row
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Could not update player'
+      throw cause
+    } finally {
+      saving.value = false
     }
   }
 
@@ -185,9 +196,23 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
       ledgerByClient.value[clientId] = ledger ?? []
       incomingByClient.value[clientId] = incoming ?? []
       withdrawalsByClient.value[clientId] = withdrawals ?? []
+      patchMoneySnapshot(clientId, balance?.balance_amount, pendingIncomingTotal(incoming ?? []))
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Could not load balance detail'
     }
+  }
+
+  async function loadMoneySnapshots(rows: ClientAdmin[]) {
+    const { request } = useApi()
+    await Promise.allSettled(rows.map(async (client) => {
+      const [balance, incoming] = await Promise.all([
+        request<Balance>(`/api/v1/internal/clients/${client.id}/balance`),
+        request<IncomingBalance[]>(`/api/v1/internal/clients/${client.id}/incoming-balances?status=pending&limit=100`)
+      ])
+      balancesByClient.value[client.id] = balance
+      incomingByClient.value[client.id] = incoming ?? []
+      patchMoneySnapshot(client.id, balance?.balance_amount, pendingIncomingTotal(incoming ?? []))
+    }))
   }
 
   async function adjustBalance(clientId: number, payload: BalanceAdjustmentRequest) {
@@ -200,6 +225,7 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
         body: payload
       })
       balancesByClient.value[clientId] = balance
+      patchMoneySnapshot(clientId, balance?.balance_amount)
       await loadBalanceDetail(clientId)
       return balance
     } catch (cause) {
@@ -223,6 +249,25 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     if (i >= 0) clients.value[i] = row
   }
 
+  function patchMoneySnapshot(clientId: number, balanceAmount?: string, incomingBalanceAmount?: string) {
+    const i = clients.value.findIndex(c => c.id === clientId)
+    if (i < 0) return
+    const current = clients.value[i]
+    if (!current) return
+    clients.value[i] = {
+      ...current,
+      balance_amount: balanceAmount ?? current.balance_amount ?? '0',
+      incoming_balance_amount: incomingBalanceAmount ?? current.incoming_balance_amount ?? '0'
+    }
+  }
+
+  function pendingIncomingTotal(rows: IncomingBalance[]) {
+    const total = rows
+      .filter(row => row.status === 'pending')
+      .reduce((sum, row) => sum + Number(row.amount || 0), 0)
+    return Number.isFinite(total) ? String(total) : '0'
+  }
+
   return {
     clients,
     charactersByClient,
@@ -237,11 +282,12 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     lastPassword,
     load,
     create,
-    updateDiscord,
+    updateProfile,
     setActive,
     setFavorite,
     resetPassword,
     loadCharacters,
+    loadMoneySnapshots,
     createCharacter,
     updateCharacter,
     deleteCharacter,

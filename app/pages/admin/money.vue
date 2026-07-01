@@ -20,7 +20,7 @@ const {
   error
 } = storeToRefs(store)
 
-const form = reactive<CreateIncomingRequest>({ client_id: 0, amount: 0, week_id: '', note: '' })
+const form = reactive<CreateIncomingRequest>({ client_id: 0, amount: 0, week_id: '', note: '', password: '' })
 const rateDraft = ref('0')
 const incomingStatusFilter = ref<'all' | IncomingStatus>('all')
 const withdrawalStatusFilter = ref<'all' | WithdrawalStatus>('all')
@@ -189,11 +189,12 @@ function formatDate(value?: string | null) {
 }
 
 async function submitIncoming() {
-  if (!form.client_id || !form.amount || form.amount <= 0) return
+  if (!form.client_id || !form.amount || form.amount <= 0 || !form.password?.trim()) return
   try {
     await store.createIncoming({ ...form })
     form.amount = 0
     form.note = ''
+    form.password = ''
   } catch {
     // store exposes error
   }
@@ -305,6 +306,18 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
             v-model="form.note"
             class="w-full"
             placeholder="optional"
+          />
+        </UFormField>
+        <UFormField
+          label="Password"
+          required
+        >
+          <UInput
+            v-model="form.password"
+            type="password"
+            autocomplete="current-password"
+            class="w-full"
+            placeholder="Required"
           />
         </UFormField>
         <UButton

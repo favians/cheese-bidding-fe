@@ -432,3 +432,12 @@
     white-space: normal;
   }
 }
+
+/* Boss name on the player loot cards. */
+.loot-boss {
+  color: var(--cb-theme);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

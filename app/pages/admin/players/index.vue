@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminCreateClientRequest, BalanceAdjustmentRequest, ClientAdmin, ClientCharacter, SaveClientCharacterRequest } from '#shared/types/api'
+import type { AdminUpdateClientRequest, ClientAdmin, ClientCharacter, SaveClientCharacterRequest } from '#shared/types/api'
 import { wowClasses } from '~/data/wowClasses'
 
 definePageMeta({ middleware: 'admin' })
@@ -9,24 +9,22 @@ const {
   clients,
   charactersByClient,
   balancesByClient,
-  ledgerByClient,
-  incomingByClient,
-  withdrawalsByClient,
   pagination,
   loading,
-  saving,
   error,
   lastPassword
 } = storeToRefs(store)
 
 const search = ref('')
-const status = ref<'all' | 'active' | 'inactive'>('all')
-const showCreate = ref(false)
-const form = reactive<AdminCreateClientRequest>({ username: '', password: '', discord_id: '' })
+const status = ref<'all' | 'active' | 'inactive'>('active')
 const expandedClientId = ref<number | null>(null)
-const balanceClientId = ref<number | null>(null)
 const editingCharacterId = ref<number | null>(null)
-const adjustmentForm = reactive<BalanceAdjustmentRequest>({ amount: '', reason: '' })
+const editPlayerOpen = ref(false)
+const editPlayerId = ref<number | null>(null)
+const editPlayerForm = reactive<AdminUpdateClientRequest>({
+  username: '',
+  discord_id: ''
+})
 const characterForm = reactive<SaveClientCharacterRequest>({
   character_name: '',
   server: 'Whitemane',
@@ -45,6 +43,7 @@ const playerColumns = [
   { key: 'discord_id', label: 'Discord' },
   { key: 'characters', label: 'Characters' },
   { key: 'balance', label: 'Balance' },
+  { key: 'incoming_balance', label: 'Incoming' },
   { key: 'status', label: 'Status' },
   { key: 'actions', label: 'Actions' }
 ]
@@ -53,7 +52,6 @@ const specializationItems = computed(() => selectedClass.value?.specializations 
 const activePlayerDetailKeys = computed(() => {
   const keys = new Set<number>()
   if (expandedClientId.value) keys.add(expandedClientId.value)
-  if (balanceClientId.value) keys.add(balanceClientId.value)
   return [...keys]
 })
 
@@ -76,24 +74,33 @@ watch(status, () => {
   void loadPlayers(1)
 })
 
-async function submitCreate() {
-  if (!form.username.trim() || !form.password.trim() || !form.discord_id.trim()) return
-  try {
-    await store.create({ ...form })
-    await loadPlayers(1)
-    form.username = ''
-    form.password = ''
-    form.discord_id = ''
-    showCreate.value = false
-  } catch {
-    // store exposes error
-  }
+function openEditPlayer(client: ClientAdmin) {
+  editPlayerId.value = client.id
+  editPlayerForm.username = client.username
+  editPlayerForm.discord_id = client.discord_id
+  editPlayerOpen.value = true
 }
 
-async function editDiscord(id: number, current: string) {
-  const next = window.prompt('Discord ID', current)
-  if (next && next.trim() && next.trim() !== current) {
-    await store.updateDiscord(id, next.trim())
+function closeEditPlayer() {
+  editPlayerOpen.value = false
+  editPlayerId.value = null
+  editPlayerForm.username = ''
+  editPlayerForm.discord_id = ''
+}
+
+async function savePlayerProfile() {
+  if (!editPlayerId.value) return
+  const username = editPlayerForm.username.trim()
+  const discordID = editPlayerForm.discord_id.trim()
+  if (!username || !discordID) return
+  try {
+    await store.updateProfile(editPlayerId.value, {
+      username,
+      discord_id: discordID
+    })
+    closeEditPlayer()
+  } catch {
+    // store exposes error
   }
 }
 
@@ -116,20 +123,22 @@ function characterRows(clientId: number) {
   return charactersByClient.value[clientId] ?? []
 }
 
-function ledgerRows(clientId: number) {
-  return ledgerByClient.value[clientId] ?? []
+function playerBalanceAmount(client: ClientAdmin) {
+  return balancesByClient.value[client.id]?.balance_amount ?? client.balance_amount ?? '0'
 }
 
-function incomingRows(clientId: number) {
-  return incomingByClient.value[clientId] ?? []
+function incomingBalanceAmount(client: ClientAdmin) {
+  return client.incoming_balance_amount ?? '0'
 }
 
-function withdrawalRows(clientId: number) {
-  return withdrawalsByClient.value[clientId] ?? []
+function formatMoney(value: string | number) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return String(value)
+  return numeric.toLocaleString('en-US')
 }
 
-function balanceAmount(clientId: number) {
-  return balancesByClient.value[clientId]?.balance_amount ?? '0'
+function moneyTone(value: string | number) {
+  return Number(value) < 0 ? 'admin-money-amount admin-money-amount--debit' : 'admin-money-amount admin-money-amount--credit'
 }
 
 async function toggleCharacters(clientId: number) {
@@ -139,24 +148,6 @@ async function toggleCharacters(clientId: number) {
   if (expandedClientId.value && !charactersByClient.value[clientId]) {
     await store.loadCharacters(clientId)
   }
-}
-
-async function toggleBalance(clientId: number) {
-  balanceClientId.value = balanceClientId.value === clientId ? null : clientId
-  adjustmentForm.amount = ''
-  adjustmentForm.reason = ''
-  if (balanceClientId.value && !balancesByClient.value[clientId]) {
-    await store.loadBalanceDetail(clientId)
-  }
-}
-
-async function submitBalanceAdjustment(clientId: number) {
-  const amount = adjustmentForm.amount.trim()
-  const reason = adjustmentForm.reason.trim()
-  if (!amount || !reason || Number(amount) === 0) return
-  await store.adjustBalance(clientId, { amount, reason })
-  adjustmentForm.amount = ''
-  adjustmentForm.reason = ''
 }
 
 function resetCharacterForm() {
@@ -227,57 +218,6 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
       ]"
     />
 
-    <UCard
-      v-if="showCreate"
-      class="public-login-card mb-6"
-    >
-      <form
-        class="login-form"
-        @submit.prevent="submitCreate"
-      >
-        <div class="grid grid-cols-3 gap-3">
-          <UFormField
-            label="Username"
-            required
-          >
-            <UInput
-              v-model="form.username"
-              class="w-full"
-              autocomplete="off"
-            />
-          </UFormField>
-          <UFormField
-            label="Password"
-            required
-          >
-            <UInput
-              v-model="form.password"
-              class="w-full"
-              autocomplete="off"
-            />
-          </UFormField>
-          <UFormField
-            label="Discord ID"
-            required
-          >
-            <UInput
-              v-model="form.discord_id"
-              class="w-full"
-              placeholder="name#1234"
-            />
-          </UFormField>
-        </div>
-        <UButton
-          type="submit"
-          label="Create player"
-          icon="i-lucide-check"
-          block
-          class="justify-center"
-          :loading="saving"
-        />
-      </form>
-    </UCard>
-
     <div
       v-if="loading && !clients.length"
       class="py-8 text-center opacity-70"
@@ -299,7 +239,7 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
         icon="i-lucide-user-plus"
         label="New player"
         class="admin-data-table-primary-action"
-        @click="showCreate = true"
+        to="/admin/players/new"
       />
     </div>
     <AdminDataTable
@@ -320,7 +260,7 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
             icon="i-lucide-user-plus"
             label="New player"
             class="admin-data-table-primary-action"
-            @click="showCreate = !showCreate"
+            to="/admin/players/new"
           />
         </div>
         <div class="admin-data-table-toolbar">
@@ -360,12 +300,18 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
       </template>
 
       <template #cell-balance="{ row: c }">
-        <span v-if="balancesByClient[c.id]">{{ balanceAmount(c.id) }}</span>
+        <span :class="moneyTone(playerBalanceAmount(c))">
+          {{ formatMoney(playerBalanceAmount(c)) }}
+        </span>
+      </template>
+
+      <template #cell-incoming_balance="{ row: c }">
         <span
-          v-else
-          class="admin-player-muted"
+          :class="Number(incomingBalanceAmount(c)) > 0
+            ? 'admin-money-amount admin-money-amount--credit'
+            : 'admin-player-muted'"
         >
-          Not loaded
+          {{ formatMoney(incomingBalanceAmount(c)) }}
         </span>
       </template>
 
@@ -405,21 +351,21 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
               size="xs"
               color="neutral"
               variant="soft"
-              :icon="balanceClientId === c.id ? 'i-lucide-wallet-cards' : 'i-lucide-wallet'"
+              icon="i-lucide-wallet"
               aria-label="Balance"
               class="admin-data-table-icon-button"
-              @click="toggleBalance(c.id)"
+              :to="`/admin/players/${c.id}/balance`"
             />
           </UTooltip>
-          <UTooltip text="Edit Discord">
+          <UTooltip text="Edit player">
             <UButton
               size="xs"
               color="neutral"
               variant="soft"
               icon="i-lucide-pencil"
-              aria-label="Edit Discord"
+              aria-label="Edit player"
               class="admin-data-table-icon-button"
-              @click="editDiscord(c.id, c.discord_id)"
+              @click="openEditPlayer(c)"
             />
           </UTooltip>
           <UTooltip :text="c.is_favorite ? 'Remove favorite' : 'Mark favorite'">
@@ -460,117 +406,9 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
 
       <template #detail="{ row: c }">
         <div
-          v-if="balanceClientId === c.id || expandedClientId === c.id"
+          v-if="expandedClientId === c.id"
           class="admin-data-table-detail"
         >
-          <div
-            v-if="balanceClientId === c.id"
-            class="admin-balance-panel"
-          >
-            <div class="admin-balance-summary">
-              <span>
-                Available balance
-                <strong>{{ balanceAmount(c.id) }}</strong>
-              </span>
-              <UButton
-                size="xs"
-                color="neutral"
-                variant="soft"
-                icon="i-lucide-refresh-cw"
-                label="Refresh"
-                @click="store.loadBalanceDetail(c.id)"
-              />
-            </div>
-
-            <form
-              class="admin-balance-adjustment"
-              @submit.prevent="submitBalanceAdjustment(c.id)"
-            >
-              <UInput
-                v-model="adjustmentForm.amount"
-                placeholder="+100 or -50"
-                aria-label="Adjustment amount"
-              />
-              <UInput
-                v-model="adjustmentForm.reason"
-                placeholder="Reason"
-                aria-label="Adjustment reason"
-              />
-              <UButton
-                type="submit"
-                color="primary"
-                variant="soft"
-                icon="i-lucide-circle-dollar-sign"
-                label="Adjust"
-                :loading="saving"
-                :disabled="!adjustmentForm.amount.trim() || !adjustmentForm.reason.trim()"
-              />
-            </form>
-
-            <div class="admin-balance-grid">
-              <section>
-                <h3>Ledger</h3>
-                <div
-                  v-if="!ledgerRows(c.id).length"
-                  class="admin-character-empty"
-                >
-                  No ledger entries.
-                </div>
-                <div
-                  v-for="entry in ledgerRows(c.id)"
-                  :key="entry.id"
-                  class="admin-balance-row"
-                >
-                  <span>
-                    <strong>{{ entry.amount }}</strong>
-                    <small>{{ entry.type }} · {{ entry.source }} · bal {{ entry.balance_after }}</small>
-                  </span>
-                  <small>{{ entry.note || entry.session_snapshot || '—' }}</small>
-                </div>
-              </section>
-
-              <section>
-                <h3>Incoming</h3>
-                <div
-                  v-if="!incomingRows(c.id).length"
-                  class="admin-character-empty"
-                >
-                  No incoming payouts.
-                </div>
-                <div
-                  v-for="row in incomingRows(c.id)"
-                  :key="row.id"
-                  class="admin-balance-row"
-                >
-                  <span>
-                    <strong>{{ row.amount }}</strong>
-                    <small>{{ row.week_id || '—' }} · {{ row.status }}</small>
-                  </span>
-                </div>
-              </section>
-
-              <section>
-                <h3>Withdrawals</h3>
-                <div
-                  v-if="!withdrawalRows(c.id).length"
-                  class="admin-character-empty"
-                >
-                  No withdrawals.
-                </div>
-                <div
-                  v-for="row in withdrawalRows(c.id)"
-                  :key="row.id"
-                  class="admin-balance-row"
-                >
-                  <span>
-                    <strong>{{ row.amount }}</strong>
-                    <small>{{ row.payment_method }} · {{ row.status }}</small>
-                  </span>
-                </div>
-              </section>
-            </div>
-          </div>
-
           <div
             v-if="expandedClientId === c.id"
             class="admin-character-panel"
@@ -614,7 +452,7 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
                   color="primary"
                   icon="i-lucide-save"
                   :label="editingCharacterId ? 'Save' : 'Add'"
-                  :loading="saving"
+                  :loading="store.saving"
                 />
                 <UButton
                   v-if="editingCharacterId"
@@ -677,5 +515,60 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
       :loading="loading"
       @change="loadPlayers"
     />
+
+    <UModal
+      v-model:open="editPlayerOpen"
+      title="Edit player"
+      description="Update username and Discord ID."
+      class="admin-player-edit-modal"
+    >
+      <template #body>
+        <form
+          id="admin-edit-player-form"
+          class="admin-player-edit-form"
+          @submit.prevent="savePlayerProfile"
+        >
+          <UFormField
+            label="Username"
+            required
+          >
+            <UInput
+              v-model="editPlayerForm.username"
+              class="w-full"
+              autocomplete="off"
+              placeholder="Username"
+            />
+          </UFormField>
+          <UFormField
+            label="Discord ID"
+            required
+          >
+            <UInput
+              v-model="editPlayerForm.discord_id"
+              class="w-full"
+              autocomplete="off"
+              placeholder="Discord ID"
+            />
+          </UFormField>
+        </form>
+      </template>
+      <template #footer>
+        <div class="admin-player-edit-actions">
+          <UButton
+            label="Cancel"
+            color="neutral"
+            variant="outline"
+            @click="closeEditPlayer"
+          />
+          <UButton
+            type="submit"
+            form="admin-edit-player-form"
+            label="Save player"
+            color="primary"
+            :loading="store.saving"
+          />
+        </div>
+      </template>
+    </UModal>
   </main>
 </template>

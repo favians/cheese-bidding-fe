@@ -4,14 +4,17 @@ import type {
   Withdrawal,
   WithdrawalConfig,
   CreateWithdrawalRequest,
+  IncomingBalance,
   Pagination
 } from '#shared/types/api'
 
 export const useWalletStore = defineStore('wallet', () => {
   const balance = ref('0')
   const ledger = ref<LedgerEntry[]>([])
+  const incoming = ref<IncomingBalance[]>([])
   const withdrawals = ref<Withdrawal[]>([])
   const ledgerPagination = ref<Pagination | null>(null)
+  const incomingPagination = ref<Pagination | null>(null)
   const withdrawalPagination = ref<Pagination | null>(null)
   const config = ref<WithdrawalConfig | null>(null)
   const loading = ref(false)
@@ -25,6 +28,7 @@ export const useWalletStore = defineStore('wallet', () => {
     try {
       const [b] = await Promise.all([
         request<Balance>('/api/v1/client/balance'),
+        loadIncoming(1),
         loadLedger(1),
         loadWithdrawals(1)
       ])
@@ -50,6 +54,15 @@ export const useWalletStore = defineStore('wallet', () => {
     })
     ledger.value = data ?? []
     ledgerPagination.value = pagination
+  }
+
+  async function loadIncoming(page = 1) {
+    const { requestPaged } = useApi()
+    const { data, pagination } = await requestPaged<IncomingBalance[]>('/api/v1/client/incoming-balances', {
+      query: { page: String(page), limit: '10' }
+    })
+    incoming.value = data ?? []
+    incomingPagination.value = pagination
   }
 
   async function loadWithdrawals(page = 1) {
@@ -83,8 +96,10 @@ export const useWalletStore = defineStore('wallet', () => {
   return {
     balance,
     ledger,
+    incoming,
     withdrawals,
     ledgerPagination,
+    incomingPagination,
     withdrawalPagination,
     config,
     loading,
@@ -92,6 +107,7 @@ export const useWalletStore = defineStore('wallet', () => {
     error,
     load,
     loadLedger,
+    loadIncoming,
     loadWithdrawals,
     requestWithdrawal
   }

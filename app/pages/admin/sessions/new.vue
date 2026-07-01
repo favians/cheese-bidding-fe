@@ -201,17 +201,10 @@ async function submitCreate() {
         class="login-form"
         @submit.prevent="submitCreate"
       >
-        <UFormField
-          label="Prebuilt title"
-          required
-        >
-          <UInput
-            v-model="form.title"
-            readonly
-            class="w-full"
-            placeholder="Pick date, faction, and raid instances"
-          />
-        </UFormField>
+        <section class="session-prebuilt-title">
+          <span>Title</span>
+          <h3>{{ form.title || 'Pick date, faction, and raid instances' }}</h3>
+        </section>
         <UFormField label="Faction">
           <div class="session-instance-picker session-faction-picker">
             <button
@@ -237,7 +230,7 @@ async function submitCreate() {
               @click="toggleInstance(instance.id)"
             >
               <span>{{ instance.name }}</span>
-              <small>{{ instance.expansion }}</small>
+              <small>{{ instance.expansion.toUpperCase() }}</small>
             </button>
           </div>
         </UFormField>
@@ -294,14 +287,15 @@ async function submitCreate() {
             </div>
           </UFormField>
         </div>
-        <UButton
-          type="submit"
-          label="Create session"
-          icon="i-lucide-check"
-          block
-          class="justify-center"
-          :loading="saving"
-        />
+        <div class="session-create-actions">
+          <UButton
+            type="submit"
+            label="Create session"
+            icon="i-lucide-check"
+            size="xl"
+            :loading="saving"
+          />
+        </div>
       </form>
     </UCard>
   </main>

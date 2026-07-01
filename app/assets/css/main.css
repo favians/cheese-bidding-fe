@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 @import "./identity.css";
+@import "./themes.css";
 @import "./characters.css";
 @import "./bidding.css";
 @import "./session-admin.css";

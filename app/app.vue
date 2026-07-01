@@ -21,7 +21,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <UApp>
+  <UApp :toaster="{ position: 'top-center', duration: 3000 }">
     <NuxtPage />
   </UApp>
 </template>

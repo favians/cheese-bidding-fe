@@ -15,6 +15,14 @@
   --cb-theme-hot-rgb: 245, 158, 11;
   --cb-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
   --cb-font-wow: "Friz Quadrata Std", "Friz Quadrata", Cinzel, Georgia, serif;
+  /* Themeable background stops + raid backdrop — overridden per instance in
+     themes.css (default = the gold cheese theme). */
+  --cb-bg-1: #100907;
+  --cb-bg-2: #24130a;
+  --cb-bg-3: #4a2608;
+  --cb-bg-4: #080403;
+  --cb-backdrop: none;
+  --cb-backdrop-opacity: 0;
 }
 
 html,
@@ -32,7 +40,21 @@ body {
     radial-gradient(ellipse at 50% 42%, rgba(var(--cb-theme-rgb), 0.24), transparent 30rem),
     radial-gradient(ellipse at 18% 78%, rgba(var(--cb-theme-hot-rgb), 0.16), transparent 24rem),
     radial-gradient(ellipse at 82% 72%, rgba(var(--cb-theme-rgb), 0.12), transparent 26rem),
-    linear-gradient(180deg, #100907 0%, #24130a 34%, #4a2608 62%, #080403 100%);
+    linear-gradient(180deg, var(--cb-bg-1) 0%, var(--cb-bg-2) 34%, var(--cb-bg-3) 62%, var(--cb-bg-4) 100%);
+  transition: background 400ms ease;
+}
+
+/* Raid backdrop layer (the instance loading screen), sits behind everything. */
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  content: "";
+  pointer-events: none;
+  background: var(--cb-backdrop) center top / cover no-repeat;
+  opacity: var(--cb-backdrop-opacity);
+  filter: saturate(0.9) contrast(1.05);
+  transition: opacity 400ms ease;
 }
 
 body::after {
@@ -68,11 +90,14 @@ body::after {
   min-height: 104px;
   padding: 20px 24px;
   margin-bottom: 32px;
-  border: 1px solid var(--cb-line);
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.32);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(18, 9, 7, 0.94), rgba(67, 34, 8, 0.82));
+  background:
+    linear-gradient(135deg, rgba(var(--cb-theme-rgb), 0.16), rgba(var(--cb-theme-hot-rgb), 0.05)),
+    linear-gradient(135deg, rgba(16, 10, 12, 0.94), rgba(10, 7, 9, 0.9));
   box-shadow: var(--cb-shadow);
   backdrop-filter: blur(18px);
+  transition: background 400ms ease, border-color 400ms ease;
 }
 
 .nav-actions {
@@ -93,16 +118,18 @@ body::after {
   align-items: center;
   min-height: 76px;
   margin-bottom: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.26);
   border-radius: 24px;
   background:
-    linear-gradient(135deg, rgba(10, 18, 28, 0.76), rgba(10, 8, 13, 0.88)),
-    radial-gradient(circle at 16% 0%, rgba(var(--cb-theme-rgb), 0.2), transparent 34rem);
+    linear-gradient(135deg, rgba(var(--cb-theme-rgb), 0.18), rgba(var(--cb-theme-hot-rgb), 0.06)),
+    radial-gradient(circle at 16% 0%, rgba(var(--cb-theme-rgb), 0.24), transparent 34rem),
+    linear-gradient(135deg, rgba(8, 6, 10, 0.86), rgba(6, 4, 8, 0.9));
   box-shadow:
     0 24px 70px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
   padding: 12px;
   backdrop-filter: blur(22px);
+  transition: background 400ms ease, border-color 400ms ease;
 }
 
 .admin-navbar-brand,
@@ -437,6 +464,173 @@ body::after {
   font-size: 0.84rem;
 }
 
+.wallet-content-panel {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
+
+.wallet-section-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.wallet-section-heading span {
+  color: var(--cb-theme);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wallet-section-heading h2 {
+  margin: 0;
+  color: #fff7ed;
+  font-family: var(--cb-font-wow);
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.1;
+}
+
+.wallet-balance-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.wallet-balance-card,
+.wallet-info-card,
+.wallet-history-card {
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.22);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(39, 23, 12, 0.72), rgba(9, 6, 4, 0.86)),
+    radial-gradient(circle at 50% 0%, rgba(var(--cb-theme-rgb), 0.1), transparent 66%);
+  box-shadow:
+    0 20px 68px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.wallet-balance-card,
+.wallet-info-card {
+  display: grid;
+  gap: 7px;
+  min-height: 150px;
+  padding: 18px;
+  align-content: center;
+}
+
+.wallet-balance-card span,
+.wallet-info-card span,
+.wallet-balance-card small,
+.wallet-info-card small {
+  color: var(--cb-muted);
+  font-weight: 850;
+}
+
+.wallet-balance-card strong,
+.wallet-info-card strong {
+  color: #fff7ed;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1;
+}
+
+.wallet-info-card small {
+  max-width: 36rem;
+  line-height: 1.5;
+}
+
+.wallet-history-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.wallet-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wallet-card-head h2 {
+  margin: 0;
+  color: #fff7ed;
+  font-size: 1.08rem;
+  font-weight: 950;
+}
+
+.wallet-card-head span {
+  color: var(--cb-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.wallet-table {
+  display: grid;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.wallet-table-row {
+  display: grid;
+  gap: 10px;
+  align-items: center;
+  min-width: 760px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 247, 237, 0.82);
+  font-size: 0.86rem;
+}
+
+.wallet-table-head {
+  color: var(--cb-theme);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.wallet-incoming-row {
+  grid-template-columns: minmax(100px, 0.7fr) minmax(100px, 0.7fr) minmax(100px, 0.55fr) minmax(220px, 1.4fr) minmax(160px, 0.9fr);
+}
+
+.wallet-ledger-row {
+  grid-template-columns: minmax(100px, 0.65fr) minmax(130px, 0.75fr) minmax(220px, 1.3fr) minmax(220px, 1.3fr) minmax(100px, 0.6fr) minmax(160px, 0.9fr);
+}
+
+.wallet-withdrawal-row {
+  grid-template-columns: minmax(100px, 0.7fr) minmax(130px, 0.8fr) minmax(110px, 0.6fr) minmax(220px, 1.3fr) minmax(160px, 0.9fr);
+}
+
+.wallet-empty {
+  padding: 22px;
+  border: 1px dashed rgba(var(--cb-theme-rgb), 0.18);
+  border-radius: 10px;
+  color: var(--cb-muted);
+  text-align: center;
+}
+
+.wallet-money {
+  font-weight: 950;
+}
+
+.wallet-money--credit {
+  color: #6ee7b7 !important;
+}
+
+.wallet-money--debit {
+  color: #fca5a5 !important;
+}
+
+.wallet-money--incoming {
+  color: #facc15 !important;
+}
+
 .admin-balance-adjustment {
   display: grid;
   grid-template-columns: minmax(120px, 0.6fr) minmax(180px, 1fr) auto;
@@ -489,11 +683,181 @@ body::after {
   font-size: 0.76rem;
 }
 
+.admin-balance-page {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.18);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(7, 18, 24, 0.74), rgba(3, 8, 12, 0.92)),
+    radial-gradient(circle at 50% 0%, rgba(var(--cb-theme-rgb), 0.08), transparent 58%);
+  box-shadow: var(--cb-shadow);
+}
+
+.admin-balance-page-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0;
+}
+
+.admin-balance-page-card {
+  display: grid;
+  gap: 8px;
+  min-height: 140px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.admin-balance-page-card span,
+.admin-balance-page-card small {
+  color: var(--cb-muted);
+  font-weight: 900;
+}
+
+.admin-balance-page-card strong {
+  color: #fff7ed;
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  line-height: 1.1;
+}
+
+.admin-balance-page .admin-money-amount--credit,
+.admin-balance-page .wallet-money--credit {
+  color: #6ee7b7 !important;
+}
+
+.admin-balance-page .admin-money-amount--debit,
+.admin-balance-page .wallet-money--debit {
+  color: #fca5a5 !important;
+}
+
+.admin-balance-page-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-top: 1px solid rgba(var(--cb-theme-rgb), 0.16);
+}
+
+.admin-balance-page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  background: linear-gradient(90deg, rgba(var(--cb-theme-rgb), 0.1), rgba(255, 255, 255, 0.02));
+}
+
+.admin-balance-page-head h2 {
+  margin: 0;
+  color: #fff7ed;
+  font-size: 1.02rem;
+  font-weight: 950;
+}
+
+.admin-balance-page-head span {
+  color: #67e8f9;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-balance-page-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: end;
+  justify-content: flex-start;
+  justify-self: start;
+  width: auto;
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  background: transparent;
+}
+
+.admin-balance-page-form--incoming {
+  grid-template-columns: none;
+}
+
+.admin-balance-page-form > * {
+  min-width: 0;
+}
+
+.admin-balance-page-field {
+  flex: 0 0 220px;
+  width: 220px;
+}
+
+.admin-balance-page-field--note {
+  flex-basis: 260px;
+  width: 260px;
+}
+
+.admin-balance-page-submit {
+  flex: 0 0 190px;
+  width: 190px;
+  min-height: 42px;
+}
+
+.admin-balance-page-form--incoming > * {
+  min-width: 0;
+}
+
+.admin-balance-page-form--incoming .admin-balance-page-field {
+  flex-basis: 220px;
+  width: 220px;
+}
+
+.admin-balance-page-form--incoming .admin-balance-page-field--note {
+  flex-basis: 260px;
+  width: 260px;
+}
+
+.admin-balance-page-form--incoming .admin-balance-page-submit {
+  flex-basis: 190px;
+  width: 190px;
+}
+
+.admin-balance-incoming-row {
+  grid-template-columns: minmax(110px, 0.75fr) minmax(110px, 0.6fr) minmax(420px, 2fr) minmax(180px, 0.9fr) minmax(120px, 0.6fr);
+}
+
+.admin-balance-ledger-row {
+  grid-template-columns: minmax(110px, 0.7fr) minmax(150px, 0.8fr) minmax(260px, 1.3fr) minmax(360px, 1.8fr) minmax(110px, 0.6fr) minmax(180px, 0.9fr);
+}
+
 .admin-character-form {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
   gap: 10px;
   align-items: center;
+}
+
+.admin-player-edit-modal {
+  --ui-modal-width: 32rem;
+}
+
+.admin-player-edit-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.admin-player-edit-form > * {
+  width: 100%;
+}
+
+.admin-player-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
 }
 
 .admin-character-actions,
@@ -745,6 +1109,24 @@ body::after {
 
   .admin-balance-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-balance-page-form,
+  .admin-balance-page-form--incoming {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-balance-page-form > *,
+  .admin-balance-page-form--incoming > *,
+  .admin-balance-page-field,
+  .admin-balance-page-field--note,
+  .admin-balance-page-submit,
+  .admin-balance-page-form--incoming .admin-balance-page-field,
+  .admin-balance-page-form--incoming .admin-balance-page-field--note,
+  .admin-balance-page-form--incoming .admin-balance-page-submit {
+    width: 100%;
+    flex-basis: auto;
   }
 }
 
