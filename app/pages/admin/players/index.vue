@@ -5,6 +5,7 @@ import { wowClasses } from '~/data/wowClasses'
 definePageMeta({ middleware: 'admin' })
 
 const store = useAdminClientsStore()
+const catalog = useCatalogStore()
 const {
   clients,
   charactersByClient,
@@ -14,6 +15,7 @@ const {
   error,
   lastPassword
 } = storeToRefs(store)
+const { classes } = storeToRefs(catalog)
 
 const search = ref('')
 const status = ref<'all' | 'active' | 'inactive'>('active')
@@ -25,9 +27,11 @@ const editPlayerForm = reactive<AdminUpdateClientRequest>({
   username: '',
   discord_id: ''
 })
+const deleteCharacterModalOpen = ref(false)
+const deleteCharacterTarget = ref<{ clientId: number, character: ClientCharacter } | null>(null)
 const characterForm = reactive<SaveClientCharacterRequest>({
   character_name: '',
-  server: 'Whitemane',
+  server: 'Nightslayer',
   class: '',
   faction: '',
   main_spec: '',
@@ -36,8 +40,19 @@ const characterForm = reactive<SaveClientCharacterRequest>({
 let timer: ReturnType<typeof setTimeout> | undefined
 
 const statusItems = ['all', 'active', 'inactive']
-const classItems = wowClasses.map(item => item.name)
-const factionItems = ['Horde', 'Alliance']
+const classDefinitions = computed(() => classes.value.length ? classes.value : wowClasses)
+const classItems = computed(() => classDefinitions.value.map(item => ({
+  label: item.name,
+  value: item.name,
+  avatar: {
+    src: item.icon,
+    alt: `${item.name} icon`
+  }
+})))
+const factionItems = [
+  { label: '🔵 Alliance', value: 'Alliance' },
+  { label: '🔴 Horde', value: 'Horde' }
+]
 const playerColumns = [
   { key: 'player', label: 'Player' },
   { key: 'discord_id', label: 'Discord' },
@@ -47,7 +62,7 @@ const playerColumns = [
   { key: 'status', label: 'Status' },
   { key: 'actions', label: 'Actions' }
 ]
-const selectedClass = computed(() => wowClasses.find(item => item.name === characterForm.class))
+const selectedClass = computed(() => classDefinitions.value.find(item => item.name === characterForm.class))
 const specializationItems = computed(() => selectedClass.value?.specializations ?? [])
 const activePlayerDetailKeys = computed(() => {
   const keys = new Set<number>()
@@ -63,7 +78,10 @@ function loadPlayers(page = pagination.value?.page ?? 1) {
   return store.load({ search: search.value, status: status.value, page })
 }
 
-onMounted(() => loadPlayers(1))
+onMounted(() => {
+  void catalog.loadClasses('internal')
+  void loadPlayers(1)
+})
 
 watch(search, () => {
   if (timer) clearTimeout(timer)
@@ -134,7 +152,8 @@ function incomingBalanceAmount(client: ClientAdmin) {
 function formatMoney(value: string | number) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return String(value)
-  return numeric.toLocaleString('en-US')
+  const formatted = Math.abs(numeric).toLocaleString('en-US')
+  return numeric < 0 ? `-$${formatted}` : `$${formatted}`
 }
 
 function moneyTone(value: string | number) {
@@ -152,7 +171,7 @@ async function toggleCharacters(clientId: number) {
 
 function resetCharacterForm() {
   characterForm.character_name = ''
-  characterForm.server = 'Whitemane'
+  characterForm.server = 'Nightslayer'
   characterForm.class = ''
   characterForm.faction = ''
   characterForm.main_spec = ''
@@ -171,7 +190,7 @@ function editCharacter(character: ClientCharacter) {
 
 async function saveCharacter(clientId: number) {
   if (!characterForm.character_name.trim() || !characterForm.class || !characterForm.faction || !characterForm.main_spec) return
-  const payload = { ...characterForm, character_name: characterForm.character_name.trim(), server: characterForm.server.trim() || 'Whitemane' }
+  const payload = { ...characterForm, character_name: characterForm.character_name.trim(), server: 'Nightslayer' }
   if (editingCharacterId.value) {
     await store.updateCharacter(clientId, editingCharacterId.value, payload)
   } else {
@@ -181,9 +200,17 @@ async function saveCharacter(clientId: number) {
   resetCharacterForm()
 }
 
-async function removeCharacter(clientId: number, character: ClientCharacter) {
-  if (!window.confirm(`Delete ${character.character_name}?`)) return
-  await store.deleteCharacter(clientId, character.id)
+function removeCharacter(clientId: number, character: ClientCharacter) {
+  deleteCharacterTarget.value = { clientId, character }
+  deleteCharacterModalOpen.value = true
+}
+
+async function confirmRemoveCharacter() {
+  const target = deleteCharacterTarget.value
+  if (!target) return
+  await store.deleteCharacter(target.clientId, target.character.id)
+  deleteCharacterModalOpen.value = false
+  deleteCharacterTarget.value = null
 }
 </script>
 
@@ -192,30 +219,6 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
     <AdminNav
       title="Players"
       subtitle="Onboard & manage player accounts"
-    />
-
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
-    />
-
-    <!-- one-time password reveal -->
-    <UAlert
-      v-if="lastPassword"
-      color="success"
-      variant="soft"
-      icon="i-lucide-key-round"
-      class="mb-4"
-      :title="`Password for ${lastPassword.username}`"
-      :description="`${lastPassword.password} — copy and share it now; it won't be shown again.`"
-      :actions="[
-        { label: 'Copy', color: 'success', variant: 'soft', onClick: copyPassword },
-        { label: 'Dismiss', color: 'neutral', variant: 'ghost', onClick: dismissPassword }
-      ]"
     />
 
     <div
@@ -308,7 +311,7 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
       <template #cell-incoming_balance="{ row: c }">
         <span
           :class="Number(incomingBalanceAmount(c)) > 0
-            ? 'admin-money-amount admin-money-amount--credit'
+            ? 'admin-money-amount admin-money-amount--incoming'
             : 'admin-player-muted'"
         >
           {{ formatMoney(incomingBalanceAmount(c)) }}
@@ -421,13 +424,10 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
                 v-model="characterForm.character_name"
                 placeholder="Character"
               />
-              <UInput
-                v-model="characterForm.server"
-                placeholder="Server"
-              />
               <USelect
                 v-model="characterForm.class"
                 :items="classItems"
+                :avatar="selectedClass ? { src: selectedClass.icon, alt: `${selectedClass.name} icon` } : undefined"
                 placeholder="Class"
               />
               <USelect
@@ -566,6 +566,54 @@ async function removeCharacter(clientId: number, character: ClientCharacter) {
             label="Save player"
             color="primary"
             :loading="store.saving"
+          />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal
+      :open="!!lastPassword"
+      :title="lastPassword ? `Password for ${lastPassword.username}` : 'Password generated'"
+      :description="lastPassword ? `${lastPassword.password} — copy and share it now; it will not be shown again.` : ''"
+      @update:open="value => { if (!value) dismissPassword() }"
+    >
+      <template #footer>
+        <div class="admin-player-edit-actions">
+          <UButton
+            label="Copy"
+            color="success"
+            variant="soft"
+            icon="i-lucide-copy"
+            @click="copyPassword"
+          />
+          <UButton
+            label="Dismiss"
+            color="neutral"
+            variant="outline"
+            @click="dismissPassword"
+          />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="deleteCharacterModalOpen"
+      title="Delete character"
+      :description="deleteCharacterTarget ? `Delete ${deleteCharacterTarget.character.character_name}?` : ''"
+    >
+      <template #footer>
+        <div class="admin-player-edit-actions">
+          <UButton
+            label="Cancel"
+            color="neutral"
+            variant="outline"
+            @click="deleteCharacterModalOpen = false"
+          />
+          <UButton
+            label="Delete"
+            color="error"
+            :loading="store.saving"
+            @click="confirmRemoveCharacter"
           />
         </div>
       </template>

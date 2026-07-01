@@ -119,6 +119,23 @@ export const useBiddingStore = defineStore('bidding', () => {
     }
   }
 
+  // Fallback poll: SSE is the primary path, but if the stream drops (proxy/dev
+  // HMR/network) this keeps the board live + still fires outbid detection,
+  // because it patches in place through the same patch* functions.
+  async function refresh(sessionId: string) {
+    const { request } = useApi()
+    try {
+      const [auctionRows, prebidRows] = await Promise.all([
+        request<Auction[]>(`/api/v1/client/auctions?session_id=${encodeURIComponent(sessionId)}`),
+        request<Prebid[]>(`/api/v1/client/prebids?session_id=${encodeURIComponent(sessionId)}`)
+      ])
+      for (const auction of auctionRows ?? []) patchAuction(auction)
+      for (const prebid of prebidRows ?? []) patchPrebid(prebid)
+    } catch {
+      // ignore transient refresh failures; SSE / next poll recovers
+    }
+  }
+
   // --- realtime (SSE) ---
   const source = ref<EventSource | null>(null)
 
@@ -181,6 +198,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     } else {
       auctions.value = [updated, ...auctions.value]
     }
+    clearOutbidIfLeading(updated)
   }
 
   function patchPrebid(updated: Prebid) {
@@ -195,6 +213,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     } else {
       prebids.value = [updated, ...prebids.value]
     }
+    clearOutbidIfLeading(updated)
   }
 
   // flag when an incoming update took the top bid away from the caller
@@ -205,6 +224,19 @@ export const useBiddingStore = defineStore('bidding', () => {
       && next.bid_count > prev.bid_count
     ) {
       lastOutbid.value = { name: next.item_name, ts: Date.now() }
+      outbidIds.value.add(next.id) // mark the row red until the caller re-leads
+    }
+  }
+
+  // ids of items where the caller was outbid (drives the red row state)
+  const outbidIds = ref(new Set<string>())
+  function isOutbid(id: string) {
+    return outbidIds.value.has(id)
+  }
+  // clear the outbid flag once the caller is the top bidder again
+  function clearOutbidIfLeading(item: Auction | Prebid) {
+    if (isMine(item.current_winner_member_id)) {
+      outbidIds.value.delete(item.id)
     }
   }
 
@@ -222,10 +254,12 @@ export const useBiddingStore = defineStore('bidding', () => {
     members,
     sessionInfo,
     isMine,
+    isOutbid,
     memberName,
     loadMyMember,
     loadMembers,
     loadSession,
+    refresh,
     loading,
     bidding,
     error,

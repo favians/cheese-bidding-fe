@@ -32,15 +32,30 @@ watch(lastNewItem, (v) => {
 
 const bidInputs = reactive<Record<string, number | undefined>>({})
 const playerTab = ref<PlayerTab>('bid')
+const sessionUnavailableModalOpen = ref(false)
+const sessionEndedModalOpen = ref(false)
+const selfBidModalOpen = ref(false)
+const pendingSelfBid = ref<{ type: 'auction' | 'prebid', item: Auction | Prebid, amount: number } | null>(null)
 
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
+let poll: ReturnType<typeof setInterval> | undefined
+
+watch(sessionUnavailable, (value) => {
+  if (value) sessionUnavailableModalOpen.value = true
+}, { immediate: true })
+
+watch(sessionEnded, (value) => {
+  if (value) sessionEndedModalOpen.value = true
+}, { immediate: true })
 
 onMounted(() => {
   outbidAudio = new Audio('/outbid-alert.mp3')
   outbidAudio.preload = 'auto'
   newItemAudio = new Audio('/new-item.mp3')
   newItemAudio.preload = 'auto'
+  window.addEventListener('pointerdown', unlockAudio)
+  window.addEventListener('keydown', unlockAudio)
   bidding.load(sessionId.value)
   bidding.loadSession(sessionId.value)
   bidding.loadMyMember(sessionId.value)
@@ -48,10 +63,15 @@ onMounted(() => {
   bidding.connect(sessionId.value)
   // timer auto-closes now arrive over SSE (scheduler publishes); just tick the clock
   clock = setInterval(() => (now.value = Date.now()), 1000)
+  // safety-net: catch any updates a dropped SSE stream missed (patches in place)
+  poll = setInterval(() => bidding.refresh(sessionId.value), 8000)
 })
 
 onBeforeUnmount(() => {
   if (clock) clearInterval(clock)
+  if (poll) clearInterval(poll)
+  window.removeEventListener('pointerdown', unlockAudio)
+  window.removeEventListener('keydown', unlockAudio)
   if (outbidAudio) {
     outbidAudio.pause()
     outbidAudio = undefined
@@ -77,6 +97,19 @@ function playNewItemSound() {
   void newItemAudio.play().catch(() => {
     // browser may block audio until user interacts
   })
+}
+
+// browsers block audio until a user gesture; prime the elements on the first
+// interaction so later programmatic plays (over SSE) are allowed
+function unlockAudio() {
+  for (const audio of [outbidAudio, newItemAudio]) {
+    void audio?.play().then(() => {
+      audio?.pause()
+      if (audio) audio.currentTime = 0
+    }).catch(() => {})
+  }
+  window.removeEventListener('pointerdown', unlockAudio)
+  window.removeEventListener('keydown', unlockAudio)
 }
 
 function secondsLeft(endsAt?: string | null) {
@@ -110,8 +143,14 @@ async function bidAuction(item: Auction, amount: number) {
   if (sessionEnded.value) return
   if (amount < item.next_min_bid) return
   if (bidding.isMine(item.current_winner_member_id)) {
-    if (!window.confirm('You are already winning this item. Bid against yourself anyway?')) return
+    pendingSelfBid.value = { type: 'auction', item, amount }
+    selfBidModalOpen.value = true
+    return
   }
+  await submitAuctionBid(item, amount)
+}
+
+async function submitAuctionBid(item: Auction, amount: number) {
   try {
     await bidding.placeBid(item.id, amount)
     bidInputs[item.id] = undefined
@@ -124,8 +163,14 @@ async function bidPrebid(item: Prebid, amount: number) {
   if (sessionEnded.value) return
   if (amount < item.next_min_bid) return
   if (bidding.isMine(item.current_winner_member_id)) {
-    if (!window.confirm('You are already leading this prebid. Bid again anyway?')) return
+    pendingSelfBid.value = { type: 'prebid', item, amount }
+    selfBidModalOpen.value = true
+    return
   }
+  await submitPrebidBid(item, amount)
+}
+
+async function submitPrebidBid(item: Prebid, amount: number) {
   try {
     await bidding.placePrebidBid(item.id, amount)
     bidInputs[item.id] = undefined
@@ -144,6 +189,18 @@ function canSubmitPrebid(item: Prebid) {
   if (sessionEnded.value) return false
   const amount = bidInputs[item.id]
   return amount === undefined || amount >= item.next_min_bid
+}
+
+async function confirmSelfBid() {
+  const pending = pendingSelfBid.value
+  if (!pending) return
+  selfBidModalOpen.value = false
+  pendingSelfBid.value = null
+  if (pending.type === 'auction') {
+    await submitAuctionBid(pending.item as Auction, pending.amount)
+  } else {
+    await submitPrebidBid(pending.item as Prebid, pending.amount)
+  }
 }
 </script>
 
@@ -165,45 +222,6 @@ function canSubmitPrebid(item: Prebid) {
         to="/play"
       />
     </header>
-
-    <UAlert
-      v-if="sessionUnavailable"
-      color="warning"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      title="Session unavailable"
-      :description="sessionUnavailable.message"
-      class="mb-4"
-    >
-      <template #actions>
-        <UButton
-          color="warning"
-          variant="solid"
-          icon="i-lucide-arrow-left"
-          label="Back to join"
-          to="/play"
-        />
-      </template>
-    </UAlert>
-
-    <UAlert
-      v-else-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
-    />
-
-    <UAlert
-      v-if="sessionEnded"
-      color="success"
-      variant="soft"
-      icon="i-lucide-flag"
-      title="Session ended"
-      description="Bidding is closed. Final results are shown below."
-      class="mb-4"
-    />
 
     <section class="player-board">
       <div class="player-board-head">
@@ -255,7 +273,7 @@ function canSubmitPrebid(item: Prebid) {
             v-for="item in activeAuctions"
             :key="item.id"
             class="auction-card"
-            :class="{ winning: bidding.isMine(item.current_winner_member_id) }"
+            :class="{ winning: bidding.isMine(item.current_winner_member_id), outbid: bidding.isOutbid(item.id) }"
           >
             <div class="loot-cell">
               <div class="item-icon">
@@ -352,7 +370,7 @@ function canSubmitPrebid(item: Prebid) {
             v-for="item in openPrebids"
             :key="item.id"
             class="auction-card prebid-card"
-            :class="{ winning: bidding.isMine(item.current_winner_member_id) }"
+            :class="{ winning: bidding.isMine(item.current_winner_member_id), outbid: bidding.isOutbid(item.id) }"
           >
             <div class="loot-cell">
               <div class="item-icon">
@@ -459,5 +477,61 @@ function canSubmitPrebid(item: Prebid) {
         </div>
       </div>
     </section>
+
+    <UModal
+      v-model:open="sessionUnavailableModalOpen"
+      title="Session unavailable"
+      :description="sessionUnavailable?.message || 'Session cannot be opened.'"
+    >
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="warning"
+            icon="i-lucide-arrow-left"
+            label="Back to join"
+            to="/play"
+          />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="sessionEndedModalOpen"
+      title="Session ended"
+      description="Bidding is closed. Final results are shown below."
+    >
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="neutral"
+            variant="outline"
+            label="Close"
+            @click="sessionEndedModalOpen = false"
+          />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="selfBidModalOpen"
+      title="Confirm self bid"
+      :description="pendingSelfBid?.type === 'auction' ? 'You are already winning this item. Bid against yourself anyway?' : 'You are already leading this prebid. Bid again anyway?'"
+    >
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="neutral"
+            variant="outline"
+            label="Cancel"
+            @click="selfBidModalOpen = false"
+          />
+          <UButton
+            color="warning"
+            label="Bid anyway"
+            @click="confirmSelfBid"
+          />
+        </div>
+      </template>
+    </UModal>
   </main>
 </template>

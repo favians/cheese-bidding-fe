@@ -66,14 +66,6 @@ onMounted(() => {
             />
           </UFormField>
 
-          <UAlert
-            v-if="play.error"
-            color="error"
-            variant="soft"
-            icon="i-lucide-circle-alert"
-            :title="play.error"
-          />
-
           <UButton
             type="submit"
             label="Join"

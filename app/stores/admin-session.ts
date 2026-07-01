@@ -16,6 +16,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
   const members = ref<SessionMember[]>([])
   const sessionInstances = ref<SessionInstance[]>([])
   const summary = ref<SessionSummary | null>(null)
+  const lastNewItem = ref<{ name: string, ts: number } | null>(null)
   const loading = ref(false)
   const saving = ref(false)
   const error = ref('')
@@ -24,6 +25,9 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     const { request } = useApi()
     loading.value = true
     error.value = ''
+    // clear the previous session so its (possibly ended) state doesn't linger
+    // while navigating between sessions
+    session.value = null
     try {
       const [s, a, p, m] = await Promise.all([
         request<Session>(`/api/v1/internal/sessions/${id}`),
@@ -54,7 +58,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
   // existing object for unchanged rows so the 2s admin poll doesn't replace the
   // whole array (which makes the board flicker / re-render). Object identity is
   // preserved for rows still present, so Vue's keyed diff does minimal DOM work.
-  function patchRows<T extends { id: string }>(target: Ref<T[]>, incoming: T[]) {
+  function patchRows<T extends { id: string, item_name: string }>(target: Ref<T[]>, incoming: T[]) {
     const byId = new Map(target.value.map(row => [row.id, row]))
     target.value = incoming.map((row) => {
       const existing = byId.get(row.id)
@@ -62,6 +66,8 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
         Object.assign(existing, row)
         return existing
       }
+      // a row not seen last poll = a newly-added item (page plays a sound)
+      lastNewItem.value = { name: row.item_name, ts: Date.now() }
       return row
     })
   }
@@ -100,6 +106,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
         body: payload
       })
       auctions.value = [created, ...auctions.value]
+      lastNewItem.value = { name: created.item_name, ts: Date.now() }
       await loadSummary(sessionId)
       return created
     } catch (cause) {
@@ -120,6 +127,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
         body: payload
       })
       prebids.value = [created, ...prebids.value]
+      lastNewItem.value = { name: created.item_name, ts: Date.now() }
       await loadSummary(sessionId)
       return created
     } catch (cause) {
@@ -204,6 +212,7 @@ export const useAdminSessionStore = defineStore('admin-session', () => {
     members,
     sessionInstances,
     summary,
+    lastNewItem,
     loading,
     saving,
     error,

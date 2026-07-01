@@ -441,3 +441,12 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* Outbid → the player was leading and got overtaken: turn the row red. */
+.auction-card.outbid {
+  border-color: rgba(239, 68, 68, 0.6);
+  background:
+    linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.05)),
+    rgba(239, 68, 68, 0.04);
+  box-shadow: inset 3px 0 0 #ef4444;
+}

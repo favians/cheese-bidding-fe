@@ -7,6 +7,7 @@ definePageMeta({ middleware: 'auth' })
 
 const auth = useAuthStore()
 const characterStore = useCharactersStore()
+const catalog = useCatalogStore()
 const toast = useToast()
 const activeSection = ref<'identity' | 'password' | 'characters'>('identity')
 const currentPassword = ref('')
@@ -15,6 +16,7 @@ const confirmPassword = ref('')
 const editingID = ref<number | null>(null)
 const deleteTarget = ref<ClientCharacter | null>(null)
 const deleteModalOpen = ref(false)
+const inactiveModalOpen = ref(false)
 
 const characterState = reactive<SaveClientCharacterRequest>({
   character_name: '',
@@ -26,9 +28,21 @@ const characterState = reactive<SaveClientCharacterRequest>({
 })
 
 const initial = computed(() => auth.profile?.username.charAt(0).toUpperCase() || '?')
-const classItems = wowClasses.map(item => item.name)
-const factionItems = ['Horde', 'Alliance']
-const selectedClass = computed(() => wowClasses.find(item => item.name === characterState.class))
+const { classes } = storeToRefs(catalog)
+const classDefinitions = computed(() => classes.value.length ? classes.value : wowClasses)
+const classItems = computed(() => classDefinitions.value.map(item => ({
+  label: item.name,
+  value: item.name,
+  avatar: {
+    src: item.icon,
+    alt: `${item.name} icon`
+  }
+})))
+const factionItems = [
+  { label: '🔵 Alliance', value: 'Alliance' },
+  { label: '🔴 Horde', value: 'Horde' }
+]
+const selectedClass = computed(() => classDefinitions.value.find(item => item.name === characterState.class))
 const specializationItems = computed(() => selectedClass.value?.specializations ?? [])
 const offSpecItems = computed(() => ['', ...specializationItems.value.filter(spec => spec !== characterState.main_spec)])
 const characterColumns: TableColumn<ClientCharacter>[] = [
@@ -39,7 +53,12 @@ const characterColumns: TableColumn<ClientCharacter>[] = [
   { id: 'actions', header: '' }
 ]
 
+watch(() => auth.profile?.is_active, (isActive) => {
+  if (isActive === false) inactiveModalOpen.value = true
+}, { immediate: true })
+
 onMounted(async () => {
+  void catalog.loadClasses('client')
   if (!characterStore.loaded && !characterStore.loading) {
     try {
       await characterStore.load()
@@ -108,7 +127,7 @@ function editCharacter(character: ClientCharacter) {
   editingID.value = character.id
   Object.assign(characterState, {
     character_name: character.character_name,
-    server: character.server,
+    server: 'Nightslayer',
     class: character.class,
     faction: character.faction,
     main_spec: character.main_spec,
@@ -123,6 +142,7 @@ function requestDelete(character: ClientCharacter) {
 
 async function submitCharacter(event: FormSubmitEvent<SaveClientCharacterRequest>) {
   try {
+    event.data.server = 'Nightslayer'
     if (editingID.value) {
       await characterStore.update(editingID.value, event.data)
       toast.add({ title: 'Character updated', color: 'success', icon: 'i-lucide-circle-check' })
@@ -158,7 +178,7 @@ function classSlug(className: string) {
 }
 
 function classIcon(className: string) {
-  return wowClasses.find(item => item.name === className)?.icon ?? ''
+  return classDefinitions.value.find(item => item.name === className)?.icon ?? ''
 }
 
 async function submitPassword() {
@@ -313,16 +333,6 @@ async function logout() {
             <h2>Reset Password</h2>
           </div>
 
-          <UAlert
-            v-if="!auth.profile?.is_active"
-            class="profile-section-alert"
-            color="warning"
-            variant="soft"
-            icon="i-lucide-lock"
-            title="Account inactive"
-            description="Password changes are disabled until an admin reactivates your account."
-          />
-
           <UCard class="profile-password-card">
             <form
               class="profile-password-form"
@@ -362,13 +372,6 @@ async function logout() {
                 />
               </UFormField>
 
-              <UAlert
-                v-if="auth.error"
-                color="error"
-                variant="soft"
-                icon="i-lucide-circle-alert"
-                :description="auth.error"
-              />
               <UButton
                 type="submit"
                 label="Reset Password"
@@ -388,16 +391,6 @@ async function logout() {
             <span>Characters</span>
             <h2>{{ editingID ? 'Edit Character' : 'Character List' }}</h2>
           </div>
-
-          <UAlert
-            v-if="!auth.profile?.is_active"
-            class="profile-section-alert"
-            color="warning"
-            variant="soft"
-            icon="i-lucide-lock"
-            title="Account inactive"
-            description="Character changes are disabled until an admin reactivates your account."
-          />
 
           <UCard class="character-form-card">
             <UForm
@@ -419,16 +412,6 @@ async function logout() {
               </UFormField>
 
               <UFormField
-                name="server"
-                label="Server"
-              >
-                <UInput
-                  v-model="characterState.server"
-                  disabled
-                />
-              </UFormField>
-
-              <UFormField
                 name="class"
                 label="Class"
                 required
@@ -436,6 +419,7 @@ async function logout() {
                 <USelect
                   v-model="characterState.class"
                   :items="classItems"
+                  :avatar="selectedClass ? { src: selectedClass.icon, alt: `${selectedClass.name} icon` } : undefined"
                   placeholder="Select class"
                 />
               </UFormField>
@@ -477,15 +461,6 @@ async function logout() {
                   placeholder="None"
                 />
               </UFormField>
-
-              <UAlert
-                v-if="characterStore.error"
-                class="character-form-alert"
-                color="error"
-                variant="soft"
-                icon="i-lucide-circle-alert"
-                :description="characterStore.error"
-              />
 
               <div class="character-form-actions">
                 <UButton
@@ -609,6 +584,23 @@ async function logout() {
           :loading="characterStore.saving"
           @click="confirmDelete"
         />
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="inactiveModalOpen"
+      title="Account inactive"
+      description="Profile changes are disabled until an admin reactivates your account."
+    >
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="neutral"
+            variant="outline"
+            label="Close"
+            @click="inactiveModalOpen = false"
+          />
+        </div>
       </template>
     </UModal>
   </main>

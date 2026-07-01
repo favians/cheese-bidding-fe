@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'admin' })
 
 const store = useAdminClientsStore()
 const { saving, error } = storeToRefs(store)
+const showPassword = ref(false)
 
 const form = reactive<AdminCreateClientRequest>({
   username: '',
@@ -44,15 +45,6 @@ async function submitCreate() {
       </template>
     </AdminNav>
 
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
-    />
-
     <UCard class="public-login-card mb-6">
       <form
         class="login-form"
@@ -86,10 +78,21 @@ async function submitCreate() {
         >
           <UInput
             v-model="form.password"
-            type="text"
+            :type="showPassword ? 'text' : 'password'"
             class="w-full"
-            autocomplete="off"
-          />
+            autocomplete="new-password"
+          >
+            <template #trailing>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </UInput>
         </UFormField>
         <div class="session-create-actions">
           <UButton

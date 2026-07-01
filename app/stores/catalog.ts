@@ -1,8 +1,10 @@
-import type { Instance, Item } from '#shared/types/api'
+import type { Instance, Item, WowClassDefinition } from '#shared/types/api'
+import { wowClasses } from '~/data/wowClasses'
 
 export const useCatalogStore = defineStore('catalog', () => {
   const instances = ref<Instance[]>([])
   const items = ref<Item[]>([])
+  const classes = ref<WowClassDefinition[]>([])
   const loading = ref(false)
 
   async function loadInstances() {
@@ -31,5 +33,20 @@ export const useCatalogStore = defineStore('catalog', () => {
     }
   }
 
-  return { instances, items, loading, loadInstances, searchItems }
+  async function loadClasses(scope: 'internal' | 'client' = 'internal') {
+    if (classes.value.length) return
+    const { request } = useApi()
+    const prefix = scope === 'client' ? '/api/v1/client' : '/api/v1/internal'
+    try {
+      const rows = await request<WowClassDefinition[]>(`${prefix}/classes`)
+      classes.value = rows.map(row => ({
+        ...row,
+        icon: row.icon || row.icon_path || `/icons/classes/${row.slug}.png`
+      }))
+    } catch {
+      classes.value = wowClasses
+    }
+  }
+
+  return { instances, items, classes, loading, loadInstances, loadClasses, searchItems }
 })

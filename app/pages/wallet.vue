@@ -19,10 +19,15 @@ const {
 } = storeToRefs(wallet)
 
 const form = reactive<CreateWithdrawalRequest>({ amount: 0, payment_method: '', note: '' })
+const maintenanceModalOpen = ref(false)
 
 onMounted(() => wallet.load())
 
 const maintenance = computed(() => config.value?.maintenance_mode ?? false)
+
+watch(maintenance, (value) => {
+  if (value) maintenanceModalOpen.value = true
+}, { immediate: true })
 const pendingIncoming = computed(() => {
   const total = incoming.value
     .filter(row => row.status === 'pending')
@@ -105,15 +110,6 @@ async function submit() {
         to="/play"
       />
     </header>
-
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
-    />
 
     <section class="wallet-content-panel">
       <div class="wallet-section-heading">
@@ -243,18 +239,8 @@ async function submit() {
       </section>
     </section>
 
-    <UAlert
-      v-if="maintenance"
-      color="warning"
-      variant="soft"
-      icon="i-lucide-wrench"
-      title="Withdrawals are temporarily closed"
-      description="The admin has withdrawals in maintenance. Try again later."
-      class="mb-6"
-    />
-
     <UCard
-      v-else
+      v-if="!maintenance"
       class="public-login-card mb-6"
     >
       <form
@@ -349,5 +335,22 @@ async function submit() {
         @change="wallet.loadWithdrawals"
       />
     </section>
+
+    <UModal
+      v-model:open="maintenanceModalOpen"
+      title="Withdrawals are temporarily closed"
+      description="The admin has withdrawals in maintenance. Try again later."
+    >
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="neutral"
+            variant="outline"
+            label="Close"
+            @click="maintenanceModalOpen = false"
+          />
+        </div>
+      </template>
+    </UModal>
   </main>
 </template>

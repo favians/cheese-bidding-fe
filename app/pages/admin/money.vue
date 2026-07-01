@@ -27,6 +27,16 @@ const withdrawalStatusFilter = ref<'all' | WithdrawalStatus>('all')
 const ledgerTypeFilter = ref<'all' | 'credit' | 'debit'>('all')
 const ledgerSourceFilter = ref('all')
 const moneySearch = ref('')
+const moneyConfirmOpen = ref(false)
+const withdrawalNote = ref('')
+const moneyConfirm = ref<{
+  title: string
+  description: string
+  confirmLabel: string
+  color: 'primary' | 'error' | 'warning' | 'success'
+  needsNote?: boolean
+  run: () => Promise<void>
+} | null>(null)
 
 const incomingStatusItems = ['all', 'pending', 'confirmed', 'cancelled']
 const withdrawalStatusItems = ['all', 'pending', 'approved', 'rejected', 'paid']
@@ -201,22 +211,36 @@ async function submitIncoming() {
 }
 
 async function moveWithdrawal(id: string, status: WithdrawalStatus) {
-  const note = window.prompt(`Admin note for "${status}" (optional)`) ?? ''
-  if (!window.confirm(`Move withdrawal to ${status}?`)) return
-  try {
-    await store.updateWithdrawal(id, status, note)
-  } catch {
-    // store exposes error
+  withdrawalNote.value = ''
+  moneyConfirm.value = {
+    title: 'Update withdrawal',
+    description: `Move withdrawal to ${status}?`,
+    confirmLabel: `Set ${status}`,
+    color: status === 'rejected' ? 'error' : 'warning',
+    needsNote: true,
+    run: () => store.updateWithdrawal(id, status, withdrawalNote.value)
   }
+  moneyConfirmOpen.value = true
 }
 
 async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel') {
-  if (!window.confirm(`${action === 'confirm' ? 'Confirm' : 'Cancel'} payout ${row.amount} for client ${row.client_id}?`)) return
-  try {
-    await store.settleIncoming(row.id, action)
-  } catch {
-    // store exposes error
+  moneyConfirm.value = {
+    title: action === 'confirm' ? 'Confirm payout' : 'Cancel payout',
+    description: `${action === 'confirm' ? 'Confirm' : 'Cancel'} payout ${row.amount} for client ${row.client_id}?`,
+    confirmLabel: action === 'confirm' ? 'Confirm payout' : 'Cancel payout',
+    color: action === 'confirm' ? 'success' : 'error',
+    run: () => store.settleIncoming(row.id, action)
   }
+  moneyConfirmOpen.value = true
+}
+
+async function confirmMoneyAction() {
+  const action = moneyConfirm.value
+  if (!action) return
+  await action.run()
+  moneyConfirmOpen.value = false
+  moneyConfirm.value = null
+  withdrawalNote.value = ''
 }
 </script>
 
@@ -225,15 +249,6 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
     <AdminNav
       title="Money"
       subtitle="Payouts, withdrawals & settings"
-    />
-
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
     />
 
     <!-- Settings -->
@@ -641,5 +656,40 @@ async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel'
         @change="loadWithdrawalPage"
       />
     </section>
+
+    <UModal
+      v-model:open="moneyConfirmOpen"
+      :title="moneyConfirm?.title || 'Confirm action'"
+      :description="moneyConfirm?.description || ''"
+    >
+      <template #body>
+        <UFormField
+          v-if="moneyConfirm?.needsNote"
+          label="Admin note"
+        >
+          <UInput
+            v-model="withdrawalNote"
+            class="w-full"
+            placeholder="optional"
+          />
+        </UFormField>
+      </template>
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="neutral"
+            variant="outline"
+            label="Cancel"
+            @click="moneyConfirmOpen = false"
+          />
+          <UButton
+            :color="moneyConfirm?.color || 'primary'"
+            :label="moneyConfirm?.confirmLabel || 'Confirm'"
+            :loading="saving"
+            @click="confirmMoneyAction"
+          />
+        </div>
+      </template>
+    </UModal>
   </main>
 </template>

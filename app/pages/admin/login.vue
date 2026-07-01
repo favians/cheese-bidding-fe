@@ -73,14 +73,6 @@ async function submitLogin() {
             />
           </UFormField>
 
-          <UAlert
-            v-if="adminAuth.error"
-            color="error"
-            variant="soft"
-            icon="i-lucide-circle-alert"
-            :title="adminAuth.error"
-          />
-
           <UButton
             type="submit"
             label="Login"

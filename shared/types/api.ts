@@ -41,6 +41,16 @@ export interface ClientCharacter {
   created_at: string
 }
 
+export interface WowClassDefinition {
+  id?: number
+  name: string
+  slug: string
+  color: string
+  icon: string
+  icon_path?: string
+  specializations: string[]
+}
+
 export interface SaveClientCharacterRequest {
   character_name: string
   server: string

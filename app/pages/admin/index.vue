@@ -109,15 +109,6 @@ async function confirmEndSession() {
   <main class="public-shell">
     <AdminNav title="Sessions" />
 
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
-    />
-
     <div
       v-if="loading && !sessions.length"
       class="py-10 text-center opacity-70"

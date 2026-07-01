@@ -10,7 +10,31 @@ const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const store = useAdminSessionStore()
 const catalog = useCatalogStore()
-const { session, auctions, prebids, members, sessionInstances, summary, loading, saving, error } = storeToRefs(store)
+const { session, auctions, prebids, members, sessionInstances, summary, lastNewItem, loading, saving, error } = storeToRefs(store)
+let newItemAudio: HTMLAudioElement | undefined
+
+watch(lastNewItem, (v) => {
+  if (v) playNewItemSound()
+})
+
+function playNewItemSound() {
+  if (!newItemAudio) return
+  newItemAudio.currentTime = 0
+  void newItemAudio.play().catch(() => {
+    // browser may block audio until the admin interacts with the page
+  })
+}
+
+// browsers block audio until a user gesture; prime the element on the first
+// interaction so later programmatic plays (after an async fetch) are allowed
+function unlockAudio() {
+  void newItemAudio?.play().then(() => {
+    newItemAudio?.pause()
+    if (newItemAudio) newItemAudio.currentTime = 0
+  }).catch(() => {})
+  window.removeEventListener('pointerdown', unlockAudio)
+  window.removeEventListener('keydown', unlockAudio)
+}
 const { instances } = storeToRefs(catalog)
 
 const showAuctionForm = ref(true)
@@ -20,6 +44,15 @@ const auctionForm = reactive<CreateAuctionRequest>({ item_name: '' })
 const prebidForm = reactive<CreatePrebidRequest>({ item_name: '' })
 const selectedAuctionItemName = ref('')
 const selectedPrebidItemName = ref('')
+const sessionEndedModalOpen = ref(false)
+const actionModalOpen = ref(false)
+const pendingAction = ref<{
+  title: string
+  description: string
+  confirmLabel: string
+  color: 'primary' | 'error' | 'warning'
+  run: () => Promise<void>
+} | null>(null)
 
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
@@ -37,6 +70,15 @@ const selectedInstances = computed(() => instances.value.filter(instance => allo
 // reflect the session's raid theme onto the page (V1 parity)
 useInstanceTheme(() => selectedInstances.value[0]?.name || session.value?.title)
 const isSessionEnded = computed(() => session.value?.status === 'ended')
+
+watch(isSessionEnded, (value) => {
+  sessionEndedModalOpen.value = value
+}, { immediate: true })
+
+// reload when navigating between sessions (the page component is reused)
+watch(sessionId, (id) => {
+  store.load(id)
+})
 const summaryStats = computed(() => summary.value?.stats ?? null)
 const summaryAuctionResults = computed(() => summary.value?.auction_results ?? [])
 const resultAuctionRows = computed(() => summaryAuctionResults.value.length ? summaryAuctionResults.value : finishedAuctions.value.map(toSummaryAuctionResult))
@@ -126,6 +168,10 @@ const joinURL = computed(() => {
 })
 
 onMounted(() => {
+  newItemAudio = new Audio('/new-item.mp3')
+  newItemAudio.preload = 'auto'
+  window.addEventListener('pointerdown', unlockAudio)
+  window.addEventListener('keydown', unlockAudio)
   store.load(sessionId.value)
   catalog.loadInstances()
   clock = setInterval(() => (now.value = Date.now()), 1000)
@@ -135,6 +181,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (clock) clearInterval(clock)
   if (poll) clearInterval(poll)
+  window.removeEventListener('pointerdown', unlockAudio)
+  window.removeEventListener('keydown', unlockAudio)
+  if (newItemAudio) {
+    newItemAudio.pause()
+    newItemAudio = undefined
+  }
 })
 
 watch(() => auctionForm.item_name, (name) => {
@@ -316,10 +368,16 @@ function auctionActionMessage(item: Auction, action: 'close' | 'cancel' | 'reset
 
 async function runAuctionAction(item: Auction, action: 'close' | 'cancel' | 'reset') {
   if (isSessionEnded.value && (action === 'close' || action === 'reset')) return
-  if (import.meta.client && !window.confirm(auctionActionMessage(item, action))) {
-    return
+  pendingAction.value = {
+    title: 'Confirm auction action',
+    description: auctionActionMessage(item, action),
+    confirmLabel: action === 'close' ? 'Close auction' : action === 'cancel' ? 'Cancel auction' : 'Reset bids',
+    color: action === 'cancel' ? 'error' : 'warning',
+    run: async () => {
+      await store.auctionAction(item.id, action)
+    }
   }
-  await store.auctionAction(item.id, action)
+  actionModalOpen.value = true
 }
 
 function prebidActionMessage(item: Prebid, action: PrebidAction) {
@@ -337,10 +395,24 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
   if (action === 'delete-last-bid' && item.bid_count <= 1) {
     return
   }
-  if (import.meta.client && !window.confirm(prebidActionMessage(item, action))) {
-    return
+  pendingAction.value = {
+    title: 'Confirm prebid action',
+    description: prebidActionMessage(item, action),
+    confirmLabel: action === 'resolve' ? 'Start auction' : action === 'cancel' ? 'Cancel prebid' : 'Delete bid',
+    color: action === 'cancel' ? 'error' : 'warning',
+    run: async () => {
+      await store.prebidAction(item.id, action, sessionId.value)
+    }
   }
-  await store.prebidAction(item.id, action, sessionId.value)
+  actionModalOpen.value = true
+}
+
+async function confirmPendingAction() {
+  const action = pendingAction.value
+  if (!action) return
+  await action.run()
+  actionModalOpen.value = false
+  pendingAction.value = null
 }
 </script>
 
@@ -358,13 +430,6 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
           {{ session?.status || 'loading' }}
         </UBadge>
         <UButton
-          color="primary"
-          variant="soft"
-          icon="i-lucide-copy"
-          label="Copy join"
-          @click="copyJoin"
-        />
-        <UButton
           color="neutral"
           variant="ghost"
           icon="i-lucide-arrow-left"
@@ -373,24 +438,6 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
         />
       </template>
     </AdminNav>
-
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
-    />
-    <UAlert
-      v-if="isSessionEnded"
-      color="neutral"
-      variant="soft"
-      icon="i-lucide-flag"
-      title="Session ended"
-      description="New auctions, live closes, and reset-to-active actions are disabled. Cancel closed auctions when refund cleanup is needed."
-      class="mb-4"
-    />
 
     <div class="session-admin-grid">
       <aside class="session-admin-sidebar">
@@ -406,12 +453,16 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
             <span>Join code</span>
             <strong>{{ session?.code || '—' }}</strong>
             <small>{{ joinURL }}</small>
-          </div>
-          <div class="session-metric-grid">
-            <span>Total Sold <strong>{{ totalSold }}</strong></span>
-            <span>Cut <strong>{{ session?.management_cut_percent ?? 0 }}%</strong></span>
-            <span>Players <strong>{{ session?.player_count || members.length }}</strong></span>
-            <span>Payout <strong>{{ estimatedPayout }}</strong></span>
+            <UButton
+              color="primary"
+              variant="soft"
+              size="xs"
+              icon="i-lucide-copy"
+              label="Copy link"
+              block
+              class="justify-center session-theme-button"
+              @click="copyJoin"
+            />
           </div>
         </section>
 
@@ -471,7 +522,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
               label="Start Auction"
               icon="i-lucide-gavel"
               block
-              class="justify-center"
+              class="justify-center session-theme-button"
               :loading="saving"
               :disabled="isSessionEnded"
             />
@@ -542,7 +593,7 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
               label="Add Prebid"
               icon="i-lucide-check"
               block
-              class="justify-center"
+              class="justify-center session-theme-button"
               :loading="saving"
               :disabled="isSessionEnded"
             />
@@ -882,5 +933,45 @@ async function runPrebidAction(item: Prebid, action: PrebidAction) {
         </div>
       </section>
     </div>
+
+    <UModal
+      v-model:open="sessionEndedModalOpen"
+      title="Session ended"
+      description="New auctions, live closes, and reset-to-active actions are disabled. Cancel closed auctions when refund cleanup is needed."
+    >
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="neutral"
+            variant="outline"
+            label="Close"
+            @click="sessionEndedModalOpen = false"
+          />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="actionModalOpen"
+      :title="pendingAction?.title || 'Confirm action'"
+      :description="pendingAction?.description || ''"
+    >
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="neutral"
+            variant="outline"
+            label="Cancel"
+            @click="actionModalOpen = false"
+          />
+          <UButton
+            :color="pendingAction?.color || 'primary'"
+            :label="pendingAction?.confirmLabel || 'Confirm'"
+            :loading="saving"
+            @click="confirmPendingAction"
+          />
+        </div>
+      </template>
+    </UModal>
   </main>
 </template>

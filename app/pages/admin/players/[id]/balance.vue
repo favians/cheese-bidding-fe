@@ -26,6 +26,8 @@ const loading = ref(false)
 const savingAdjustment = ref(false)
 const savingIncoming = ref(false)
 const error = ref('')
+const incomingActionModalOpen = ref(false)
+const pendingIncomingAction = ref<{ row: IncomingBalance, action: 'confirm' | 'cancel' } | null>(null)
 
 const adjustmentForm = reactive<BalanceAdjustmentRequest>({
   amount: '',
@@ -146,14 +148,22 @@ async function submitIncoming() {
   }
 }
 
-async function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel') {
-  if (!window.confirm(`${action === 'confirm' ? 'Confirm' : 'Cancel'} incoming ${formatMoney(row.amount)}?`)) return
+function settleIncoming(row: IncomingBalance, action: 'confirm' | 'cancel') {
+  pendingIncomingAction.value = { row, action }
+  incomingActionModalOpen.value = true
+}
+
+async function confirmIncomingAction() {
+  const pending = pendingIncomingAction.value
+  if (!pending) return
   error.value = ''
   try {
-    await request<IncomingBalance>(`/api/v1/internal/incoming-balances/${row.id}/${action}`, { method: 'POST' })
+    await request<IncomingBalance>(`/api/v1/internal/incoming-balances/${pending.row.id}/${pending.action}`, { method: 'POST' })
     await Promise.all([loadIncoming(incomingPagination.value?.page ?? 1), loadLedger(1), refreshBalance()])
+    incomingActionModalOpen.value = false
+    pendingIncomingAction.value = null
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : `Could not ${action} incoming balance`
+    error.value = cause instanceof Error ? cause.message : `Could not ${pending.action} incoming balance`
   }
 }
 
@@ -214,15 +224,6 @@ function formatDate(value?: string | null) {
         />
       </template>
     </AdminNav>
-
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
-    />
 
     <div
       v-if="loading && !client"
@@ -474,5 +475,28 @@ function formatDate(value?: string | null) {
         />
       </section>
     </section>
+
+    <UModal
+      v-model:open="incomingActionModalOpen"
+      :title="pendingIncomingAction?.action === 'confirm' ? 'Confirm incoming' : 'Cancel incoming'"
+      :description="pendingIncomingAction ? `${pendingIncomingAction.action === 'confirm' ? 'Confirm' : 'Cancel'} incoming ${formatMoney(pendingIncomingAction.row.amount)}?` : ''"
+    >
+      <template #footer>
+        <div class="session-end-confirm-actions">
+          <UButton
+            color="neutral"
+            variant="outline"
+            label="Cancel"
+            @click="incomingActionModalOpen = false"
+          />
+          <UButton
+            :color="pendingIncomingAction?.action === 'confirm' ? 'success' : 'error'"
+            :label="pendingIncomingAction?.action === 'confirm' ? 'Confirm incoming' : 'Cancel incoming'"
+            :loading="loading"
+            @click="confirmIncomingAction"
+          />
+        </div>
+      </template>
+    </UModal>
   </main>
 </template>

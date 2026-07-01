@@ -1,10 +1,4 @@
-export interface WowClassDefinition {
-  name: string
-  slug: string
-  color: string
-  icon: string
-  specializations: string[]
-}
+import type { WowClassDefinition } from '#shared/types/api'
 
 export const wowClasses: WowClassDefinition[] = [
   { name: 'Druid', slug: 'druid', color: '#FF7C0A', icon: '/icons/classes/druid.png', specializations: ['Balance', 'Feral Combat', 'Restoration'] },

@@ -187,15 +187,6 @@ async function submitCreate() {
       </template>
     </AdminNav>
 
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="soft"
-      icon="i-lucide-circle-alert"
-      :title="error"
-      class="mb-4"
-    />
-
     <UCard class="public-login-card mb-6">
       <form
         class="login-form"
