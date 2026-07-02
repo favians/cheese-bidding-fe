@@ -289,6 +289,7 @@ export interface LedgerEntry {
   item_instance_name: string
   note: string
   session_snapshot: string
+  created_by: string
   created_at: string
 }
 
@@ -301,6 +302,7 @@ export interface IncomingBalance {
   amount: string
   status: IncomingStatus
   note: string
+  created_by: string
   created_at: string
   confirmed_at: string | null
   cancelled_at: string | null
@@ -360,6 +362,13 @@ export interface ClientAdmin {
   created_at: string
 }
 
+export interface ClientListSummary {
+  total_balance_amount: string
+  total_surplus_balance_amount: string
+  total_minus_balance_amount: string
+  total_incoming_amount: string
+}
+
 export interface AdminCreateClientRequest {
   username: string
   password: string
@@ -376,4 +385,5 @@ export interface ClientSession {
   code: string
   title: string
   status: string
+  bid_currency: BidCurrency
 }

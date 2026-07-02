@@ -374,6 +374,14 @@
   background: transparent;
 }
 
+.admin-data-table-empty-row:hover {
+  background: transparent;
+}
+
+.admin-data-table-empty-row td {
+  padding: 18px;
+}
+
 .admin-data-table-detail {
   display: grid;
   gap: 14px;
@@ -397,101 +405,6 @@
 
 .admin-money-section {
   margin-bottom: 24px;
-}
-
-.admin-money-external-card {
-  border-color: rgba(var(--cb-theme-rgb), 0.24);
-  background:
-    linear-gradient(135deg, rgba(18, 9, 7, 0.96), rgba(52, 26, 8, 0.88)),
-    radial-gradient(circle at 10% 0%, rgba(var(--cb-theme-rgb), 0.18), transparent 24rem);
-}
-
-.admin-money-external-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.admin-money-external-header p,
-.admin-money-external-block span {
-  margin: 0 0 4px;
-  color: var(--cb-theme);
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.admin-money-external-header h2 {
-  margin: 0;
-  color: var(--cb-text);
-  font-size: 1.15rem;
-  font-weight: 900;
-}
-
-.admin-money-external-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.admin-money-external-block {
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--cb-line);
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.admin-money-external-block code,
-.admin-money-external-block pre {
-  border: 1px solid rgba(var(--cb-theme-rgb), 0.18);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.28);
-  color: var(--cb-text);
-  font-size: 0.78rem;
-}
-
-.admin-money-external-block code {
-  padding: 7px 9px;
-}
-
-.admin-money-external-block pre {
-  overflow: auto;
-  margin: 0;
-  padding: 10px;
-  white-space: pre-wrap;
-}
-
-.admin-money-external-block p,
-.admin-money-external-note {
-  color: var(--cb-muted);
-  font-size: 0.84rem;
-  line-height: 1.55;
-}
-
-.admin-money-external-block p {
-  margin: 0;
-}
-
-.admin-money-external-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border: 1px dashed rgba(var(--cb-theme-rgb), 0.28);
-  border-radius: 14px;
-  background: rgba(var(--cb-theme-rgb), 0.07);
-}
-
-.admin-money-external-note svg {
-  flex: 0 0 auto;
-  margin-top: 2px;
-  color: var(--cb-theme);
 }
 
 .admin-money-table-header h2 {
@@ -550,6 +463,13 @@
   width: 34px;
   height: 34px;
   justify-content: center;
+  cursor: pointer;
+}
+
+.admin-data-table-money-button {
+  min-width: 82px;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .admin-data-table-empty {
@@ -587,6 +507,18 @@
   color: var(--cb-text);
   font-size: 0.98rem;
   font-weight: 1000;
+}
+
+.admin-player-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-player-favorite-icon {
+  color: #facc15;
+  fill: currentcolor;
+  filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.38));
 }
 
 .session-list-title span {
@@ -1039,7 +971,7 @@
 
 .session-card-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 7px;
 }
@@ -1227,15 +1159,6 @@
     flex-direction: column;
   }
 
-  .admin-money-external-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .admin-money-external-grid {
-    grid-template-columns: 1fr;
-  }
-
   .session-results-actions {
     align-items: stretch;
     flex-direction: column;
@@ -1273,11 +1196,14 @@
 
 /* Bid received → tint the whole row green so the admin spots active items. */
 .session-auction-card.has-bid {
-  border-color: rgba(52, 211, 153, 0.55);
+  border-color: rgba(34, 197, 94, 0.5);
   background:
-    linear-gradient(90deg, rgba(52, 211, 153, 0.16), rgba(52, 211, 153, 0.04)),
-    rgba(52, 211, 153, 0.05);
-  box-shadow: inset 3px 0 0 #34d399;
+    linear-gradient(135deg, rgba(34, 197, 94, 0.24), rgba(21, 128, 61, 0.36)),
+    linear-gradient(90deg, rgba(6, 78, 59, 0.84), rgba(20, 83, 45, 0.72));
+  box-shadow:
+    inset 3px 0 0 #34d399,
+    inset 0 1px 0 rgba(220, 252, 231, 0.14),
+    0 12px 30px rgba(21, 128, 61, 0.2);
 }
 
 /* Boss name on the admin auction/prebid cards. */

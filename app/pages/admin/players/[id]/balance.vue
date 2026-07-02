@@ -8,19 +8,22 @@ import type {
   IncomingStatus,
   Item,
   LedgerEntry,
-  Pagination
+  Pagination,
+  Session
 } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
 const route = useRoute()
 const { request, requestPaged } = useApi()
+const toast = useToast()
 
 const clientId = computed(() => Number(route.params.id))
 const client = ref<ClientAdmin | null>(null)
 const balance = ref<Balance | null>(null)
 const ledger = ref<LedgerEntry[]>([])
 const incoming = ref<IncomingBalance[]>([])
+const adjustmentSessions = ref<Session[]>([])
 const ledgerPagination = ref<Pagination | null>(null)
 const incomingPagination = ref<Pagination | null>(null)
 const loading = ref(false)
@@ -61,6 +64,16 @@ const adjustmentItemName = computed({
     adjustmentForm.item_name = value
   }
 })
+const adjustmentSessionSnapshot = computed({
+  get: () => adjustmentForm.session_snapshot ?? '',
+  set: (value: string) => {
+    adjustmentForm.session_snapshot = value
+  }
+})
+const adjustmentSessionItems = computed(() => adjustmentSessions.value.map(session => ({
+  label: sessionSnapshot(session),
+  value: sessionSnapshot(session)
+})))
 
 onMounted(() => {
   if (!Number.isFinite(clientId.value) || clientId.value < 1) {
@@ -69,6 +82,7 @@ onMounted(() => {
   }
   incomingForm.client_id = clientId.value
   void loadAll()
+  void loadAdjustmentSessions()
 })
 
 async function loadAll() {
@@ -106,6 +120,17 @@ async function loadLedger(page = ledgerPagination.value?.page ?? 1) {
   ledgerPagination.value = pagination
 }
 
+async function loadAdjustmentSessions() {
+  try {
+    const { data } = await requestPaged<Session[]>('/api/v1/internal/sessions', {
+      query: { page: '1', limit: '10' }
+    })
+    adjustmentSessions.value = data ?? []
+  } catch {
+    adjustmentSessions.value = []
+  }
+}
+
 async function refreshBalance() {
   balance.value = await request<Balance>(`/api/v1/internal/clients/${clientId.value}/balance`)
 }
@@ -140,6 +165,12 @@ async function submitAdjustment() {
     clearAdjustmentItem()
     adjustmentForm.session_snapshot = ''
     await Promise.all([loadLedger(1), refreshBalance()])
+    toast.add({
+      title: 'Balance adjusted',
+      description: `${formatMoney(amount)} adjustment saved`,
+      color: 'success',
+      icon: 'i-lucide-circle-check'
+    })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Could not adjust balance'
   } finally {
@@ -156,6 +187,10 @@ function selectAdjustmentItem(item: Item) {
   adjustmentForm.image = item.icon_path
 }
 
+function sessionSnapshot(session: Session) {
+  return [session.code, session.title].filter(Boolean).join(' · ')
+}
+
 function clearAdjustmentItem() {
   adjustmentForm.item_id = 0
   adjustmentForm.item_name = ''
@@ -168,6 +203,7 @@ function clearAdjustmentItem() {
 async function submitIncoming() {
   const password = incomingForm.password?.trim()
   if (!incomingForm.amount || incomingForm.amount <= 0 || !password) return
+  const amount = incomingForm.amount
   savingIncoming.value = true
   error.value = ''
   try {
@@ -184,6 +220,12 @@ async function submitIncoming() {
     incomingForm.note = ''
     incomingForm.password = ''
     await loadIncoming(1)
+    toast.add({
+      title: 'Incoming queued',
+      description: `${formatMoney(amount)} incoming balance created`,
+      color: 'success',
+      icon: 'i-lucide-circle-check'
+    })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Could not add incoming balance'
   } finally {
@@ -203,6 +245,12 @@ async function confirmIncomingAction() {
   try {
     await request<IncomingBalance>(`/api/v1/internal/incoming-balances/${pending.row.id}/${pending.action}`, { method: 'POST' })
     await Promise.all([loadIncoming(incomingPagination.value?.page ?? 1), loadLedger(1), refreshBalance()])
+    toast.add({
+      title: pending.action === 'confirm' ? 'Incoming confirmed' : 'Incoming cancelled',
+      description: `${formatMoney(pending.row.amount)} ${pending.action === 'confirm' ? 'credited' : 'cancelled'}`,
+      color: 'success',
+      icon: 'i-lucide-circle-check'
+    })
     incomingActionModalOpen.value = false
     pendingIncomingAction.value = null
   } catch (cause) {
@@ -338,9 +386,10 @@ function formatDate(value?: string | null) {
             label="Session"
             class="admin-balance-page-field admin-balance-page-field--session"
           >
-            <UInput
-              v-model="adjustmentForm.session_snapshot"
-              placeholder="Session snapshot"
+            <USelect
+              v-model="adjustmentSessionSnapshot"
+              :items="adjustmentSessionItems"
+              placeholder="Select recent session"
               class="w-full"
             />
           </UFormField>
@@ -451,6 +500,7 @@ function formatDate(value?: string | null) {
             <span>Amount</span>
             <span>Status</span>
             <span>Note</span>
+            <span>Created By</span>
             <span>Created</span>
             <span>Actions</span>
           </div>
@@ -467,6 +517,7 @@ function formatDate(value?: string | null) {
               {{ row.status }}
             </UBadge>
             <span>{{ row.note || '—' }}</span>
+            <span>{{ row.created_by || '—' }}</span>
             <time>{{ formatDate(row.created_at) }}</time>
             <span class="admin-data-table-actions">
               <UTooltip text="Confirm incoming">
@@ -523,6 +574,7 @@ function formatDate(value?: string | null) {
             <span>Item</span>
             <span>Session</span>
             <span>Note</span>
+            <span>Updated By</span>
             <span>After</span>
             <span>Created</span>
           </div>
@@ -565,6 +617,7 @@ function formatDate(value?: string | null) {
             </span>
             <span>{{ entry.session_snapshot || '—' }}</span>
             <span>{{ entry.note || entry.source || '—' }}</span>
+            <span>{{ entry.created_by || '—' }}</span>
             <strong>{{ formatMoney(entry.balance_after) }}</strong>
             <time>{{ formatDate(entry.created_at) }}</time>
           </div>

@@ -417,6 +417,40 @@ body::after {
   gap: 12px;
 }
 
+.admin-player-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.admin-player-summary-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.34);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(var(--cb-theme-rgb), 0.2), transparent 18rem),
+    linear-gradient(135deg, rgba(18, 9, 7, 0.9), rgba(8, 5, 6, 0.76));
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+}
+
+.admin-player-summary-card span,
+.admin-player-summary-card small {
+  color: var(--cb-muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-player-summary-card strong {
+  font-size: clamp(1.55rem, 3vw, 2.25rem);
+  font-weight: 1000;
+  line-height: 1;
+}
+
 .admin-character-panel {
   display: grid;
   gap: 12px;
@@ -849,11 +883,11 @@ body::after {
 }
 
 .admin-balance-incoming-row {
-  grid-template-columns: minmax(110px, 0.75fr) minmax(110px, 0.6fr) minmax(420px, 2fr) minmax(180px, 0.9fr) minmax(120px, 0.6fr);
+  grid-template-columns: minmax(110px, 0.75fr) minmax(110px, 0.6fr) minmax(320px, 1.6fr) minmax(150px, 0.8fr) minmax(180px, 0.9fr) minmax(120px, 0.6fr);
 }
 
 .admin-balance-ledger-row {
-  grid-template-columns: minmax(110px, 0.7fr) minmax(150px, 0.8fr) minmax(220px, 1.2fr) minmax(240px, 1.2fr) minmax(320px, 1.7fr) minmax(110px, 0.6fr) minmax(180px, 0.9fr);
+  grid-template-columns: minmax(110px, 0.7fr) minmax(150px, 0.8fr) minmax(220px, 1.2fr) minmax(240px, 1.2fr) minmax(280px, 1.5fr) minmax(130px, 0.7fr) minmax(110px, 0.6fr) minmax(180px, 0.9fr);
 }
 
 .balance-history-item-cell {
@@ -1194,6 +1228,10 @@ body::after {
   }
 
   .user-list-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-player-summary-cards {
     grid-template-columns: 1fr;
   }
 

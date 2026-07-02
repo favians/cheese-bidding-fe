@@ -23,6 +23,8 @@ Separated Nuxt FE for CheeseBid V2. V1 monolith migration is functionally comple
 - ended-session UI disables new auction/prebid, live close/reset, and player bidding
 - cancel/refund cleanup remains available
 - admin money and player wallet lists are paginated; FE no longer fetches full money ledger/incoming/withdrawal tables
+- admin players re-fetches current page after activate/deactivate, so active/inactive filters stay clean
+- admin players shows top summary cards for filtered surplus balance, minus balance, and pending incoming balance using BE summary endpoint, not full client fetch
 - CSS rule remains: no inline CSS; use stylesheet files
 
 ## Remaining work

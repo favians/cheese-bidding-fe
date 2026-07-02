@@ -60,6 +60,14 @@ function onRowKeydown(event: KeyboardEvent, row: T) {
         </tr>
       </thead>
       <tbody>
+        <tr
+          v-if="!rows.length && $slots.empty"
+          class="admin-data-table-empty-row"
+        >
+          <td :colspan="columns.length">
+            <slot name="empty" />
+          </td>
+        </tr>
         <template
           v-for="row in rows"
           :key="getRowKey(row)"

@@ -42,7 +42,6 @@ export const useAdminMoneyStore = defineStore('admin-money', () => {
     error.value = ''
     try {
       await Promise.all([
-        loadBalances(params.balancePage ?? balancePagination.value?.page ?? 1),
         loadLedger(params.ledgerPage ?? ledgerPagination.value?.page ?? 1, params.ledgerSource, params.ledgerType),
         loadIncoming(params.incomingPage ?? incomingPagination.value?.page ?? 1, params.incomingStatus),
         loadWithdrawals(params.withdrawalPage ?? withdrawalPagination.value?.page ?? 1, params.withdrawalStatus)

@@ -80,7 +80,7 @@ function notifyApiError(error: ApiClientError) {
 }
 
 export function useApi() {
-  async function request<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
+  async function request<T>(path: string, options: Parameters<typeof $fetch>[1] = {}, silent = false): Promise<T> {
     try {
       const envelope = await $fetch<ApiEnvelope<T>>(path, options)
       if (envelope.error?.status) {
@@ -89,7 +89,8 @@ export function useApi() {
       return envelope.data
     } catch (error: unknown) {
       const apiError = toApiError(error)
-      notifyApiError(apiError)
+      // silent: caller handles it (e.g. membership probes that 403/404 by design)
+      if (!silent) notifyApiError(apiError)
       await handleAuthFailure(path, apiError)
       throw apiError
     }

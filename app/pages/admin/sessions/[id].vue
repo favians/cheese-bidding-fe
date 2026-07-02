@@ -66,6 +66,8 @@ const openPrebids = computed(() => prebids.value.filter(item => item.status === 
 const resolvedPrebids = computed(() => prebids.value.filter(item => item.status !== 'open'))
 const allowedItemInstanceIds = computed(() => sessionInstances.value.map(instance => instance.id))
 const selectedInstances = computed(() => instances.value.filter(instance => allowedItemInstanceIds.value.includes(instance.id)))
+// initial-buyer picker options: real session members (so the name always maps)
+const memberNames = computed(() => members.value.map(member => member.character_name || member.discord_name).filter(Boolean))
 
 // reflect the session's raid theme onto the page (V1 parity)
 useInstanceTheme(() => selectedInstances.value[0]?.name || session.value?.title)
@@ -496,6 +498,7 @@ async function confirmPendingAction() {
             <ItemPicker
               v-model="auctionForm.item_name"
               :allowed-instance-ids="allowedItemInstanceIds"
+              persist-key="auction"
               @select="onAuctionItem"
             />
             <div class="session-form-row">
@@ -559,12 +562,16 @@ async function confirmPendingAction() {
             <ItemPicker
               v-model="prebidForm.item_name"
               :allowed-instance-ids="allowedItemInstanceIds"
+              persist-key="prebid"
               @select="onPrebidItem"
             />
             <div class="session-form-row">
               <UFormField label="Initial Buyer">
-                <UInput
+                <USelectMenu
                   v-model="prebidForm.initial_buyer_name"
+                  :items="memberNames"
+                  :search-input="{ placeholder: 'Search player…' }"
+                  placeholder="Pick a player"
                   class="w-full"
                 />
               </UFormField>
@@ -580,13 +587,6 @@ async function confirmPendingAction() {
               <UFormField label="Increment">
                 <UInput
                   v-model.number="prebidForm.bid_increment"
-                  type="number"
-                  class="w-full"
-                />
-              </UFormField>
-              <UFormField label="Quantity">
-                <UInput
-                  v-model.number="prebidForm.quantity"
                   type="number"
                   class="w-full"
                 />
@@ -797,7 +797,7 @@ async function confirmPendingAction() {
                   class="session-card-actions"
                 >
                   <UButton
-                    size="xs"
+                    size="md"
                     color="success"
                     variant="soft"
                     icon="i-lucide-check"
@@ -806,7 +806,7 @@ async function confirmPendingAction() {
                     @click="runAuctionAction(item, 'close')"
                   />
                   <UButton
-                    size="xs"
+                    size="md"
                     color="warning"
                     variant="soft"
                     icon="i-lucide-rotate-ccw"
@@ -815,7 +815,7 @@ async function confirmPendingAction() {
                     @click="runAuctionAction(item, 'reset')"
                   />
                   <UButton
-                    size="xs"
+                    size="md"
                     color="error"
                     variant="soft"
                     icon="i-lucide-x"
@@ -875,7 +875,7 @@ async function confirmPendingAction() {
                     class="session-card-result-actions"
                   >
                     <UButton
-                      size="xs"
+                      size="md"
                       color="warning"
                       variant="soft"
                       icon="i-lucide-rotate-ccw"
@@ -884,7 +884,7 @@ async function confirmPendingAction() {
                       @click="runAuctionAction(item, 'reset')"
                     />
                     <UButton
-                      size="xs"
+                      size="md"
                       color="error"
                       variant="soft"
                       icon="i-lucide-x"

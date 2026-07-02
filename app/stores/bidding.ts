@@ -30,7 +30,8 @@ export const useBiddingStore = defineStore('bidding', () => {
   async function loadMyMember(sessionId: string) {
     const { request } = useApi()
     try {
-      myMember.value = await request<SessionMember>(`/api/v1/client/members/me?session_id=${encodeURIComponent(sessionId)}`)
+      // silent: a 404 here just means "not a member yet" (ensureAccess joins)
+      myMember.value = await request<SessionMember>(`/api/v1/client/members/me?session_id=${encodeURIComponent(sessionId)}`, {}, true)
     } catch {
       myMember.value = null
     }
@@ -39,7 +40,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   async function loadMembers(sessionId: string) {
     const { request } = useApi()
     try {
-      members.value = await request<SessionMember[]>(`/api/v1/client/members?session_id=${encodeURIComponent(sessionId)}`)
+      members.value = await request<SessionMember[]>(`/api/v1/client/members?session_id=${encodeURIComponent(sessionId)}`, {}, true)
     } catch {
       members.value = []
     }
@@ -49,9 +50,26 @@ export const useBiddingStore = defineStore('bidding', () => {
   async function loadSession(sessionId: string) {
     const { request } = useApi()
     try {
-      sessionInfo.value = await request<ClientSession>(`/api/v1/client/session/${encodeURIComponent(sessionId)}`)
+      sessionInfo.value = await request<ClientSession>(`/api/v1/client/session/${encodeURIComponent(sessionId)}`, {}, true)
     } catch {
       sessionInfo.value = null
+    }
+  }
+
+  // opening a session link lands on /play/[id] directly; make sure the caller is
+  // a member (auto-join by the session's code) before loading gated data, so we
+  // don't spray "forbidden" toasts.
+  async function ensureAccess(sessionId: string) {
+    await loadSession(sessionId)
+    await loadMyMember(sessionId)
+    if (!myMember.value && sessionInfo.value?.code && sessionInfo.value.status === 'active') {
+      const { request } = useApi()
+      try {
+        await request(`/api/v1/client/sessions/${encodeURIComponent(sessionInfo.value.code)}/member`, { method: 'POST' }, true)
+        await loadMyMember(sessionId)
+      } catch {
+        // join failed (e.g. ended/deleted); the gated loads will reflect the state
+      }
     }
   }
 
@@ -363,6 +381,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     loadMyMember,
     loadMembers,
     loadSession,
+    ensureAccess,
     loadCatalog,
     catalogItems,
     openPrebidForItem,

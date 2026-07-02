@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import type { Balance, CreateIncomingRequest, IncomingBalance, IncomingStatus, LedgerEntry, Withdrawal, WithdrawalStatus } from '#shared/types/api'
+import type { IncomingBalance, IncomingStatus, LedgerEntry, Withdrawal, WithdrawalStatus } from '#shared/types/api'
 
 definePageMeta({ middleware: 'admin' })
 
 const store = useAdminMoneyStore()
 const {
-  balances,
   ledger,
   incoming,
   withdrawals,
-  balancePagination,
   ledgerPagination,
   incomingPagination,
   withdrawalPagination,
@@ -20,7 +18,6 @@ const {
   error
 } = storeToRefs(store)
 
-const form = reactive<CreateIncomingRequest>({ client_id: 0, amount: 0, note: '', password: '' })
 const rateDraft = ref('0')
 const incomingStatusFilter = ref<'all' | IncomingStatus>('all')
 const withdrawalStatusFilter = ref<'all' | WithdrawalStatus>('all')
@@ -41,23 +38,7 @@ const moneyConfirm = ref<{
 const incomingStatusItems = ['all', 'pending', 'confirmed', 'cancelled']
 const withdrawalStatusItems = ['all', 'pending', 'approved', 'rejected', 'paid']
 const ledgerTypeItems = ['all', 'credit', 'debit']
-const ledgerSourceItems = ['all', 'incoming_balance', 'withdrawal', 'withdrawal_refund', 'auction_win', 'auction_refund', 'admin_adjustment', 'cheesepayout_item']
-const externalIncomingPayload = `{
-  "discordId": "123456789012345678",
-  "amount": 25000,
-  "note": "CheesePayout week payout"
-}`
-const externalItemDebitPayload = `{
-  "discordId": "123456789012345678",
-  "eventId": "week-2026-W26-item-123",
-  "amount": 5000,
-  "itemName": "Warglaive of Azzinoth",
-  "sessionSnapshot": "Friday 26 June 2026"
-}`
-const balanceColumns = [
-  { key: 'client_id', label: 'Client' },
-  { key: 'balance_amount', label: 'Balance' }
-]
+const ledgerSourceItems = ['all', 'incoming_balance', 'withdrawal', 'withdrawal_refund', 'auction_win', 'auction_refund', 'admin_adjustment']
 const ledgerColumns = [
   { key: 'client_id', label: 'Client' },
   { key: 'source', label: 'Source' },
@@ -115,10 +96,6 @@ const statusColor: Record<WithdrawalStatus, 'warning' | 'info' | 'error' | 'succ
   paid: 'success'
 }
 
-const filteredBalances = computed(() => {
-  return balances.value.filter(row => rowMatchesMoneySearch(row.client_id, row.balance_amount))
-})
-
 const filteredLedger = computed(() => {
   return ledger.value.filter((row) => {
     return rowMatchesMoneySearch(row.client_id, row.source, row.type, row.amount, row.balance_after, row.note, row.session_snapshot)
@@ -151,10 +128,6 @@ async function loadMoney() {
     incomingStatus: incomingStatusFilter.value,
     withdrawalStatus: withdrawalStatusFilter.value
   })
-}
-
-function loadBalancePage(page: number) {
-  return store.loadBalances(page)
 }
 
 function loadLedgerPage(page: number) {
@@ -195,18 +168,6 @@ function formatDate(value?: string | null) {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date)
-}
-
-async function submitIncoming() {
-  if (!form.client_id || !form.amount || form.amount <= 0 || !form.password?.trim()) return
-  try {
-    await store.createIncoming({ ...form })
-    form.amount = 0
-    form.note = ''
-    form.password = ''
-  } catch {
-    // store exposes error
-  }
 }
 
 async function moveWithdrawal(id: string, status: WithdrawalStatus) {
@@ -276,149 +237,6 @@ async function confirmMoneyAction() {
         </div>
       </div>
     </UCard>
-
-    <!-- Queue a payout -->
-    <UCard class="public-login-card mb-6">
-      <form
-        class="login-form"
-        @submit.prevent="submitIncoming"
-      >
-        <h2 class="text-base font-semibold">
-          Queue incoming payout
-        </h2>
-        <div class="grid grid-cols-3 gap-3">
-          <UFormField
-            label="Client ID"
-            required
-          >
-            <UInput
-              v-model.number="form.client_id"
-              type="number"
-              class="w-full"
-            />
-          </UFormField>
-          <UFormField
-            label="Amount"
-            required
-          >
-            <UInput
-              v-model.number="form.amount"
-              type="number"
-              class="w-full"
-            />
-          </UFormField>
-        </div>
-        <UFormField label="Note">
-          <UInput
-            v-model="form.note"
-            class="w-full"
-            placeholder="optional"
-          />
-        </UFormField>
-        <UFormField
-          label="Password"
-          required
-        >
-          <UInput
-            v-model="form.password"
-            type="password"
-            autocomplete="current-password"
-            class="w-full"
-            placeholder="Required"
-          />
-        </UFormField>
-        <UButton
-          type="submit"
-          label="Queue payout"
-          icon="i-lucide-plus"
-          block
-          class="justify-center"
-          :loading="saving"
-        />
-      </form>
-    </UCard>
-
-    <!-- External CheesePayout integration -->
-    <UCard class="admin-money-external-card mb-6">
-      <div class="admin-money-external-header">
-        <div>
-          <p>CheesePayout integration</p>
-          <h2>External wallet sync endpoints</h2>
-        </div>
-        <UBadge
-          color="success"
-          variant="soft"
-        >
-          V1 compatible
-        </UBadge>
-      </div>
-
-      <div class="admin-money-external-grid">
-        <div class="admin-money-external-block">
-          <span>Incoming payout queue</span>
-          <code>POST /api/external/incoming-balances</code>
-          <code>POST /api/v1/external/incoming-balances</code>
-          <p>Creates pending payout rows. Admin confirmation credits the wallet.</p>
-          <pre>{{ externalIncomingPayload }}</pre>
-        </div>
-
-        <div class="admin-money-external-block">
-          <span>Item debit sync</span>
-          <code>POST /api/external/item-debits</code>
-          <code>POST /api/v1/external/item-debits</code>
-          <p>CheesePayout sends a positive amount. V2 stores a negative ledger row with source <strong>cheesepayout_item</strong>. Duplicate event ID is safe.</p>
-          <pre>{{ externalItemDebitPayload }}</pre>
-        </div>
-      </div>
-
-      <div class="admin-money-external-note">
-        <UIcon name="i-lucide-key-round" />
-        <span>
-          Required header: <strong>X-Cheese-Signature</strong>.
-          Signature must be <strong>hex(hmac_sha256(minified_json_body, INCOMING_BALANCE_API_SECRET))</strong>;
-          <strong>sha256=&lt;hex&gt;</strong> is also accepted.
-        </span>
-      </div>
-    </UCard>
-
-    <!-- Balances -->
-    <section class="admin-money-section">
-      <AdminDataTable
-        :rows="filteredBalances"
-        :columns="balanceColumns"
-        row-key="client_id"
-      >
-        <template #header>
-          <div class="admin-money-table-header">
-            <div>
-              <h2>Client balances</h2>
-              <span>{{ filteredBalances.length }} shown on this page</span>
-            </div>
-            <div class="admin-money-filters">
-              <UInput
-                v-model="moneySearch"
-                icon="i-lucide-search"
-                placeholder="Search client, amount, note"
-              />
-            </div>
-          </div>
-        </template>
-
-        <template #cell-client_id="{ row }">
-          <strong>Client {{ (row as Balance).client_id }}</strong>
-        </template>
-        <template #cell-balance_amount="{ row }">
-          <span :class="moneyTone((row as Balance).balance_amount)">
-            {{ formatMoney((row as Balance).balance_amount) }}
-          </span>
-        </template>
-      </AdminDataTable>
-      <AdminPagination
-        :pagination="balancePagination"
-        :loading="loading"
-        @change="loadBalancePage"
-      />
-    </section>
 
     <!-- Ledger -->
     <section class="admin-money-section">

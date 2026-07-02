@@ -7,12 +7,27 @@ import type {
   SaveClientCharacterRequest,
   BalanceAdjustmentRequest,
   Balance,
+  ClientListSummary,
   LedgerEntry,
   IncomingBalance,
   Withdrawal
 } from '#shared/types/api'
 
 type ClientStatusFilter = 'all' | 'active' | 'inactive'
+
+const emptyClientSummary: ClientListSummary = {
+  total_balance_amount: '0',
+  total_surplus_balance_amount: '0',
+  total_minus_balance_amount: '0',
+  total_incoming_amount: '0'
+}
+
+function normalizeClientSummary(summary?: Partial<ClientListSummary> | null): ClientListSummary {
+  return {
+    ...emptyClientSummary,
+    ...(summary ?? {})
+  }
+}
 
 function isNotFoundError(cause: unknown): boolean {
   return cause instanceof Error
@@ -29,34 +44,51 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
   const ledgerByClient = ref<Record<number, LedgerEntry[]>>({})
   const incomingByClient = ref<Record<number, IncomingBalance[]>>({})
   const withdrawalsByClient = ref<Record<number, Withdrawal[]>>({})
+  const summary = ref<ClientListSummary>({ ...emptyClientSummary })
   const pagination = ref<Pagination | null>(null)
   const loading = ref(false)
   const saving = ref(false)
   const error = ref('')
+  let loadSequence = 0
   // the plaintext shown once after a create/reset (admin shares it with the player)
   const lastPassword = ref<{ username: string, password: string } | null>(null)
 
   async function load(params: { search?: string, status?: ClientStatusFilter, page?: number } = {}) {
-    const { requestPaged } = useApi()
+    const { request, requestPaged } = useApi()
+    const sequence = ++loadSequence
     loading.value = true
     error.value = ''
     try {
       const query: Record<string, string> = { limit: '10' }
+      const summaryQuery: Record<string, string> = {}
       if (params.page) query.page = String(params.page)
-      if (params.status && params.status !== 'all') query.status = params.status
-      if (params.search?.trim()) query.search = params.search.trim()
-      const { data, pagination: meta } = await requestPaged<ClientAdmin[]>('/api/v1/internal/clients', { query })
+      if (params.status && params.status !== 'all') {
+        query.status = params.status
+        summaryQuery.status = params.status
+      }
+      if (params.search?.trim()) {
+        query.search = params.search.trim()
+        summaryQuery.search = params.search.trim()
+      }
+      const [{ data, pagination: meta }, summaryData] = await Promise.all([
+        requestPaged<ClientAdmin[]>('/api/v1/internal/clients', { query }),
+        request<ClientListSummary>('/api/v1/internal/clients/summary', { query: summaryQuery })
+      ])
+      if (sequence !== loadSequence) return
       if (meta && meta.page_total > 0 && meta.page > meta.page_total) {
         await load({ ...params, page: meta.page_total })
         return
       }
       clients.value = data ?? []
       pagination.value = meta
-      await loadMoneySnapshots(clients.value)
+      summary.value = normalizeClientSummary(summaryData)
     } catch (cause) {
+      if (sequence !== loadSequence) return
       error.value = cause instanceof Error ? cause.message : 'Failed to load players'
     } finally {
-      loading.value = false
+      if (sequence === loadSequence) {
+        loading.value = false
+      }
     }
   }
 
@@ -202,19 +234,6 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     }
   }
 
-  async function loadMoneySnapshots(rows: ClientAdmin[]) {
-    const { request } = useApi()
-    await Promise.allSettled(rows.map(async (client) => {
-      const [balance, incoming] = await Promise.all([
-        request<Balance>(`/api/v1/internal/clients/${client.id}/balance`),
-        request<IncomingBalance[]>(`/api/v1/internal/clients/${client.id}/incoming-balances?status=pending&limit=100`)
-      ])
-      balancesByClient.value[client.id] = balance
-      incomingByClient.value[client.id] = incoming ?? []
-      patchMoneySnapshot(client.id, balance?.balance_amount, pendingIncomingTotal(incoming ?? []))
-    }))
-  }
-
   async function adjustBalance(clientId: number, payload: BalanceAdjustmentRequest) {
     const { request } = useApi()
     saving.value = true
@@ -275,6 +294,7 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     ledgerByClient,
     incomingByClient,
     withdrawalsByClient,
+    summary,
     pagination,
     loading,
     saving,
@@ -287,7 +307,6 @@ export const useAdminClientsStore = defineStore('admin-clients', () => {
     setFavorite,
     resetPassword,
     loadCharacters,
-    loadMoneySnapshots,
     createCharacter,
     updateCharacter,
     deleteCharacter,

@@ -5,9 +5,12 @@ const props = withDefaults(defineProps<{
   modelValue: string
   allowedInstanceIds?: number[]
   required?: boolean
+  // when set, the picked instance is remembered in localStorage under this key
+  persistKey?: string
 }>(), {
   allowedInstanceIds: () => [],
-  required: true
+  required: true,
+  persistKey: ''
 })
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -74,6 +77,15 @@ watch(() => props.allowedInstanceIds, () => {
   syncInstanceSelection()
 }, { deep: true })
 
+function storageKey() {
+  return `cb_picker_instance_${props.persistKey}`
+}
+function restoreInstance() {
+  if (!import.meta.client || !props.persistKey) return 0
+  const raw = Number(localStorage.getItem(storageKey()) || 0)
+  return Number.isFinite(raw) ? raw : 0
+}
+
 function syncInstanceSelection() {
   if (!visibleInstances.value.length) {
     instanceID.value = 0
@@ -83,9 +95,13 @@ function syncInstanceSelection() {
     instanceID.value = visibleInstances.value[0]?.id ?? 0
     return
   }
-  if (!visibleInstances.value.some(instance => instance.id === instanceID.value)) {
-    instanceID.value = 0
-  }
+  // >1 instances: keep a valid current pick, else restore the last-used one,
+  // else default to the first so the picker is never left empty
+  if (visibleInstances.value.some(instance => instance.id === instanceID.value)) return
+  const stored = restoreInstance()
+  instanceID.value = visibleInstances.value.some(instance => instance.id === stored)
+    ? stored
+    : visibleInstances.value[0]?.id ?? 0
 }
 
 function selectItem(item: Item) {
@@ -96,6 +112,9 @@ function selectItem(item: Item) {
 function selectInstance(id: number) {
   if (instanceID.value === id) return
   instanceID.value = id
+  if (import.meta.client && props.persistKey) {
+    localStorage.setItem(storageKey(), String(id))
+  }
   emit('update:modelValue', '')
   items.value = []
 }

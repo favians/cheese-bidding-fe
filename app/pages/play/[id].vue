@@ -8,10 +8,16 @@ type PlayerTab = 'bid' | 'prebid'
 const route = useRoute()
 const sessionId = computed(() => String(route.params.id))
 const bidding = useBiddingStore()
-const { activeAuctions, openPrebids, catalogItems, lastOutbid, lastNewItem, sessionUnavailable, sessionEnded, sessionInfo, loading, bidding: submitting, error } = storeToRefs(bidding)
+const { activeAuctions, openPrebids, catalogItems, lastOutbid, lastNewItem, sessionUnavailable, sessionEnded, sessionInfo, loading, error } = storeToRefs(bidding)
 
 // reflect the session's raid theme onto the page (V1 parity)
 useInstanceTheme(() => sessionInfo.value?.title)
+
+// bid currency suffix: $ for dollar sessions, G for gold sessions
+const currencySuffix = computed(() => (sessionInfo.value?.bid_currency === 'gold' ? 'G' : '$'))
+function withCurrency(amount: number) {
+  return `${amount} ${currencySuffix.value}`
+}
 
 // group the live board into instance → boss → items (V1 hierarchy)
 function groupByInstanceThenBoss<T extends { item_boss_name: string, item_instance_name: string }>(items: T[]) {
@@ -42,8 +48,16 @@ const showInstancePicker = computed(() => catalogInstances.value.length > 1)
 
 watchEffect(() => {
   if (!catalogInstances.value.includes(selectedInstance.value)) {
-    selectedInstance.value = catalogInstances.value[0] || ''
+    // restore the last-picked instance (if still available), else the first
+    const stored = import.meta.client ? localStorage.getItem('cb_prebid_instance') : null
+    selectedInstance.value = stored && catalogInstances.value.includes(stored)
+      ? stored
+      : catalogInstances.value[0] || ''
   }
+})
+
+watch(selectedInstance, (value) => {
+  if (import.meta.client && value) localStorage.setItem('cb_prebid_instance', value)
 })
 
 const prebidCatalogGroups = computed(() => {
@@ -72,6 +86,11 @@ function prebidFor(item: Item) {
 // a prebid with a real bidder (admin-seeded empty prebids don't count as "taken")
 function hasActivePrebid(item: Item) {
   return !!prebidFor(item)?.current_winner_member_id
+}
+// the caller was out-prebid on this item (same outbid tracking as live bids)
+function isPrebidOutbid(item: Item) {
+  const existing = prebidFor(item)
+  return !!existing && bidding.isOutbid(existing.id)
 }
 function isMyPrebid(item: Item) {
   const existing = prebidFor(item)
@@ -149,16 +168,16 @@ watch(sessionEnded, (value) => {
   if (value) sessionEndedModalOpen.value = true
 }, { immediate: true })
 
-onMounted(() => {
+onMounted(async () => {
   outbidAudio = new Audio('/outbid-alert.mp3')
   outbidAudio.preload = 'auto'
   newItemAudio = new Audio('/new-item.mp3')
   newItemAudio.preload = 'auto'
   window.addEventListener('pointerdown', unlockAudio)
   window.addEventListener('keydown', unlockAudio)
+  // join (if needed) before loading gated data so no "forbidden" toasts fire
+  await bidding.ensureAccess(sessionId.value)
   bidding.load(sessionId.value)
-  bidding.loadSession(sessionId.value)
-  bidding.loadMyMember(sessionId.value)
   bidding.loadMembers(sessionId.value)
   bidding.loadCatalog(sessionId.value)
   bidding.connect(sessionId.value)
@@ -269,10 +288,15 @@ async function submitPrebidBid(item: Prebid, amount: number) {
   }
 }
 
-function canCustomBid(item: Auction | Prebid) {
-  if (sessionEnded.value) return false
-  const amount = bidInputs[item.id]
-  return typeof amount === 'number' && amount >= item.next_min_bid
+// bid stepper: the effective bid value (typed, or the next minimum by default)
+function bidValue(item: Auction) {
+  return bidInputs[item.id] ?? item.next_min_bid
+}
+function setBid(item: Auction, amount: number) {
+  bidInputs[item.id] = Math.max(item.next_min_bid, Math.round(amount || 0))
+}
+function bumpBid(item: Auction, delta: number) {
+  setBid(item, bidValue(item) + delta)
 }
 
 async function confirmSelfBid() {
@@ -427,7 +451,7 @@ async function confirmSelfBid() {
 
                   <div class="bid-state">
                     <div class="bid-main">
-                      Bid <strong>{{ item.current_bid || '—' }}</strong>
+                      Bid <strong>{{ item.current_bid ? withCurrency(item.current_bid) : '—' }}</strong>
                     </div>
                     <div class="bid-by">
                       <span v-if="item.current_winner_member_id">
@@ -442,34 +466,44 @@ async function confirmSelfBid() {
                     <strong :class="{ danger: secondsLeft(item.ends_at) <= 10 }">{{ countdown(item.ends_at) }}</strong>
                   </div>
 
-                  <div class="bid-controls">
-                    <UButton
-                      class="min-button session-theme-button"
-                      color="primary"
-                      icon="i-lucide-gavel"
-                      label="Min"
-                      :loading="submitting"
-                      :disabled="sessionEnded"
-                      @click="bidAuction(item, item.next_min_bid)"
-                    />
-                    <label class="bid-input">
-                      <span>Your Bid</span>
-                      <UInput
+                  <div class="bid-panel">
+                    <div class="bid-action-row">
+                      <button
+                        type="button"
+                        class="bid-step"
+                        aria-label="Decrease bid"
+                        :disabled="sessionEnded"
+                        @click="setBid(item, bidValue(item) - item.bid_increment)"
+                      >
+                        −
+                      </button>
+                      <input
                         v-model.number="bidInputs[item.id]"
+                        class="bid-step-input"
                         type="number"
+                        inputmode="numeric"
                         :min="item.next_min_bid"
                         :placeholder="String(item.next_min_bid)"
                         :disabled="sessionEnded"
-                      />
-                    </label>
-                    <UButton
-                      color="neutral"
-                      variant="solid"
-                      label="Bid"
-                      :loading="submitting"
-                      :disabled="!canCustomBid(item)"
-                      @click="bidAuction(item, bidInputs[item.id] ?? item.next_min_bid)"
-                    />
+                      >
+                      <button
+                        type="button"
+                        class="bid-step"
+                        aria-label="Increase bid"
+                        :disabled="sessionEnded"
+                        @click="bumpBid(item, item.bid_increment)"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        class="bid-place session-theme-button"
+                        :disabled="sessionEnded"
+                        @click="bidAuction(item, bidValue(item))"
+                      >
+                        Bid
+                      </button>
+                    </div>
                   </div>
                 </article>
               </div>
@@ -524,7 +558,7 @@ async function confirmSelfBid() {
                 v-for="item in group.items"
                 :key="catalogKey(item)"
                 class="prebid-catalog-card"
-                :class="{ 'winning': isMyPrebid(item), 'has-prebid': hasActivePrebid(item) }"
+                :class="{ 'winning': isMyPrebid(item), 'outbid': isPrebidOutbid(item), 'has-prebid': hasActivePrebid(item) }"
               >
                 <div class="prebid-catalog-icon">
                   <img
@@ -558,8 +592,8 @@ async function confirmSelfBid() {
                   </div>
                   <div class="prebid-catalog-state">
                     <template v-if="prebidFor(item)?.current_winner_member_id">
-                      <span class="prebid-open-badge">Prebid {{ prebidFor(item)?.current_bid }}</span>
-                      <span class="prebid-catalog-by">{{ bidding.memberName(prebidFor(item)?.current_winner_member_id ?? '') }}</span>
+                      <span class="prebid-open-badge">Prebid {{ withCurrency(prebidFor(item)?.current_bid ?? 0) }}</span>
+                      <span class="prebid-catalog-by">By {{ bidding.memberName(prebidFor(item)?.current_winner_member_id ?? '') }}</span>
                     </template>
                     <span
                       v-else
@@ -582,7 +616,6 @@ async function confirmSelfBid() {
                       block
                       class="justify-center session-theme-button"
                       :label="hasActivePrebid(item) ? 'Outbid' : 'Prebid'"
-                      :loading="submitting"
                       :disabled="sessionEnded"
                       @click="submitCatalogPrebid(item)"
                     />
