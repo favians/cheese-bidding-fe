@@ -596,7 +596,7 @@ body::after {
 }
 
 .wallet-incoming-row {
-  grid-template-columns: minmax(100px, 0.7fr) minmax(100px, 0.7fr) minmax(100px, 0.55fr) minmax(220px, 1.4fr) minmax(160px, 0.9fr);
+  grid-template-columns: minmax(100px, 0.7fr) minmax(100px, 0.55fr) minmax(220px, 1.4fr) minmax(160px, 0.9fr);
 }
 
 .wallet-ledger-row {
@@ -752,9 +752,10 @@ body::after {
 
 .admin-balance-page-head h2 {
   margin: 0;
-  color: #fff7ed;
+  color: #ffffff;
   font-size: 1.02rem;
   font-weight: 950;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
 }
 
 .admin-balance-page-head span {
@@ -774,7 +775,7 @@ body::after {
   justify-self: start;
   width: auto;
   max-width: 100%;
-  padding: 0;
+  padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   background: transparent;
@@ -793,15 +794,39 @@ body::after {
   width: 220px;
 }
 
+.admin-balance-page-field label,
+.admin-balance-page-field [data-slot="label"] {
+  color: #ffffff !important;
+  font-weight: 850;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+
 .admin-balance-page-field--note {
   flex-basis: 260px;
   width: 260px;
+}
+
+.admin-balance-page-field--session {
+  flex-basis: 260px;
+  width: 260px;
+}
+
+.admin-balance-page-item-picker {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.admin-balance-page-clear-item {
+  justify-self: start;
 }
 
 .admin-balance-page-submit {
   flex: 0 0 190px;
   width: 190px;
   min-height: 42px;
+  margin-left: auto;
 }
 
 .admin-balance-page-form--incoming > * {
@@ -828,7 +853,80 @@ body::after {
 }
 
 .admin-balance-ledger-row {
-  grid-template-columns: minmax(110px, 0.7fr) minmax(150px, 0.8fr) minmax(260px, 1.3fr) minmax(360px, 1.8fr) minmax(110px, 0.6fr) minmax(180px, 0.9fr);
+  grid-template-columns: minmax(110px, 0.7fr) minmax(150px, 0.8fr) minmax(220px, 1.2fr) minmax(240px, 1.2fr) minmax(320px, 1.7fr) minmax(110px, 0.6fr) minmax(180px, 0.9fr);
+}
+
+.balance-history-item-cell {
+  display: inline-grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+  min-width: 0;
+}
+
+.balance-history-item-cell > .admin-player-muted {
+  grid-column: 1 / -1;
+}
+
+.balance-history-item-cell img,
+.balance-history-item-fallback {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(248, 232, 194, 0.2);
+  border-radius: 6px;
+}
+
+.balance-history-item-cell img {
+  object-fit: cover;
+}
+
+.balance-history-item-fallback {
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--cb-text);
+  font-weight: 900;
+}
+
+.balance-history-item-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.balance-history-item-copy strong {
+  color: var(--cb-text);
+  font-size: 0.82rem;
+  line-height: 1.18;
+  overflow-wrap: normal;
+  white-space: normal;
+  word-break: normal;
+}
+
+.balance-history-item-copy small {
+  color: var(--cb-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: normal;
+  white-space: normal;
+  word-break: normal;
+}
+
+.quality-item-name--legendary {
+  color: #ff8000 !important;
+}
+
+.quality-item-name--epic {
+  color: #a335ee !important;
+}
+
+.quality-item-name--rare {
+  color: #0070dd !important;
+}
+
+.quality-item-name--uncommon {
+  color: #1eff00 !important;
 }
 
 .admin-character-form {

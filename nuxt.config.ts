@@ -12,6 +12,18 @@ export default defineNuxtConfig({
     enabled: true
   },
 
+  app: {
+    head: {
+      script: [
+        // Wowhead tooltips: don't let it recolor/rename our links (we set the
+        // rarity color ourselves); power.js attaches the hover card to any
+        // wowhead.com/tbc/item= link.
+        { innerHTML: 'var whTooltips = { colorLinks: false, iconizeLinks: false, renameLinks: false };' },
+        { src: 'https://wow.zamimg.com/js/tooltips.js', defer: true }
+      ]
+    }
+  },
+
   css: ['~/assets/css/main.css'],
 
   // Force dark mode: the brand is a dark raid theme, so Nuxt UI components

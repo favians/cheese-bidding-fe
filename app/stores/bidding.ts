@@ -1,8 +1,9 @@
-import type { Auction, ClientSession, Prebid, SessionMember } from '#shared/types/api'
+import type { Auction, ClientSession, Item, Prebid, SessionInstance, SessionMember } from '#shared/types/api'
 
 export const useBiddingStore = defineStore('bidding', () => {
   const auctions = ref<Auction[]>([])
   const prebids = ref<Prebid[]>([])
+  const catalogItems = ref<Item[]>([])
   const myMember = ref<SessionMember | null>(null)
   const members = ref<SessionMember[]>([])
   const sessionInfo = ref<ClientSession | null>(null)
@@ -11,6 +12,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   const error = ref('')
   const sessionUnavailable = ref<{ reason: 'deleted', message: string } | null>(null)
   const sessionEnded = ref(false)
+  const currentSessionId = ref('')
 
   // most recent moment the caller lost a top bid (page watches this for a toast)
   const lastOutbid = ref<{ name: string, ts: number } | null>(null)
@@ -53,6 +55,72 @@ export const useBiddingStore = defineStore('bidding', () => {
     }
   }
 
+  // the prebid catalog: every loot item from the session's raid instances, so
+  // the player can open a prebid on any of them (V1 parity)
+  async function loadCatalog(sessionId: string) {
+    const { request } = useApi()
+    try {
+      const sessionInstances = await request<SessionInstance[]>(`/api/v1/client/session/${encodeURIComponent(sessionId)}/instances`)
+      const instanceIds = (sessionInstances ?? []).map(instance => instance.id)
+      if (!instanceIds.length) {
+        catalogItems.value = []
+        return
+      }
+      const lists = await Promise.all(instanceIds.map(async (id) => {
+        const all: Item[] = []
+        // the item list caps limit at 100, so page through until a short page
+        for (let page = 1; page <= 20; page++) {
+          const rows = await request<Item[]>(`/api/v1/client/items?instance_id=${id}&limit=100&page=${page}`).catch(() => [] as Item[])
+          if (!rows?.length) break
+          all.push(...rows)
+          if (rows.length < 100) break
+        }
+        return all
+      }))
+      const seen = new Set<string>()
+      const merged: Item[] = []
+      for (const list of lists) {
+        for (const item of list ?? []) {
+          const key = item.wow_item_id ? `id:${item.wow_item_id}` : `name:${item.name.toLowerCase()}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          merged.push(item)
+        }
+      }
+      catalogItems.value = merged
+    } catch {
+      catalogItems.value = []
+    }
+  }
+
+  // the open prebid (if any) for a catalog item — by wow item id, else by name
+  function openPrebidForItem(item: Item) {
+    return prebids.value.find(p => p.status === 'open' && (
+      (item.wow_item_id > 0 && p.item_id === item.wow_item_id)
+      || (item.wow_item_id === 0 && p.item_name.toLowerCase() === item.name.toLowerCase())
+    ))
+  }
+
+  // player opens a prebid on a catalog item (becomes the first prebidder)
+  async function createPlayerPrebid(sessionId: string, payload: { item_name: string, item_id: number, initial_price: number }) {
+    const { request } = useApi()
+    bidding.value = true
+    error.value = ''
+    try {
+      const created = await request<Prebid>(`/api/v1/client/sessions/${encodeURIComponent(sessionId)}/prebids`, {
+        method: 'POST',
+        body: payload
+      })
+      patchPrebid(created)
+      return created
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Could not open prebid'
+      throw cause
+    } finally {
+      bidding.value = false
+    }
+  }
+
   // display name for the current winner; 'You' when it's the caller
   function memberName(memberId: string) {
     if (!memberId) return '—'
@@ -62,6 +130,7 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   async function load(sessionId: string, options: { keepEnded?: boolean } = {}) {
     const { request } = useApi()
+    currentSessionId.value = sessionId
     loading.value = true
     error.value = ''
     sessionUnavailable.value = null
@@ -73,6 +142,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       ])
       auctions.value = auctionRows ?? []
       prebids.value = prebidRows ?? []
+      restoreOutbid()
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Failed to load the session'
       throw cause
@@ -224,20 +294,54 @@ export const useBiddingStore = defineStore('bidding', () => {
       && next.bid_count > prev.bid_count
     ) {
       lastOutbid.value = { name: next.item_name, ts: Date.now() }
-      outbidIds.value.add(next.id) // mark the row red until the caller re-leads
+      markOutbid(next.id) // mark the row red until the caller re-leads
     }
   }
 
-  // ids of items where the caller was outbid (drives the red row state)
+  // ids of items where the caller was outbid (drives the red row state).
+  // Persisted per session so the red survives a page refresh — detectOutbid
+  // only fires on a live transition, which a fresh load has no memory of.
   const outbidIds = ref(new Set<string>())
   function isOutbid(id: string) {
     return outbidIds.value.has(id)
   }
+  function outbidKey() {
+    return `cb_outbid_${currentSessionId.value}`
+  }
+  function persistOutbid() {
+    if (!import.meta.client || !currentSessionId.value) return
+    localStorage.setItem(outbidKey(), JSON.stringify([...outbidIds.value]))
+  }
+  function markOutbid(id: string) {
+    outbidIds.value.add(id)
+    persistOutbid()
+  }
   // clear the outbid flag once the caller is the top bidder again
   function clearOutbidIfLeading(item: Auction | Prebid) {
-    if (isMine(item.current_winner_member_id)) {
+    if (isMine(item.current_winner_member_id) && outbidIds.value.has(item.id)) {
       outbidIds.value.delete(item.id)
+      persistOutbid()
     }
+  }
+  // restore persisted outbid ids on load, dropping any item that is no longer
+  // live (closed/resolved/cancelled) so stale flags don't accumulate
+  function restoreOutbid() {
+    if (!import.meta.client || !currentSessionId.value) {
+      outbidIds.value = new Set()
+      return
+    }
+    let stored: string[]
+    try {
+      stored = JSON.parse(localStorage.getItem(outbidKey()) || '[]')
+    } catch {
+      stored = []
+    }
+    const live = new Set<string>([
+      ...auctions.value.filter(a => a.status === 'active').map(a => a.id),
+      ...prebids.value.filter(p => p.status === 'open').map(p => p.id)
+    ])
+    outbidIds.value = new Set(stored.filter(id => live.has(id)))
+    persistOutbid()
   }
 
   return {
@@ -259,6 +363,10 @@ export const useBiddingStore = defineStore('bidding', () => {
     loadMyMember,
     loadMembers,
     loadSession,
+    loadCatalog,
+    catalogItems,
+    openPrebidForItem,
+    createPlayerPrebid,
     refresh,
     loading,
     bidding,

@@ -4,8 +4,10 @@ import type { Item } from '#shared/types/api'
 const props = withDefaults(defineProps<{
   modelValue: string
   allowedInstanceIds?: number[]
+  required?: boolean
 }>(), {
-  allowedInstanceIds: () => []
+  allowedInstanceIds: () => [],
+  required: true
 })
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -29,8 +31,14 @@ const visibleInstances = computed(() => {
 })
 // only worth picking when the session spans more than one instance
 const showInstancePicker = computed(() => visibleInstances.value.length > 1)
+const canSearchItems = computed(() => !showInstancePicker.value || instanceID.value > 0)
 
 async function searchItems() {
+  if (!canSearchItems.value) {
+    items.value = []
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     const { request } = useApi()
@@ -50,7 +58,9 @@ onMounted(async () => {
   await catalog.loadInstances()
   syncInstanceSelection()
   ready.value = true // search exactly once, after the instance is settled
-  await searchItems()
+  if (canSearchItems.value) {
+    await searchItems()
+  }
 })
 
 // the item-name field doubles as the search box
@@ -65,18 +75,29 @@ watch(() => props.allowedInstanceIds, () => {
 }, { deep: true })
 
 function syncInstanceSelection() {
-  if (!props.allowedInstanceIds.length) {
+  if (!visibleInstances.value.length) {
     instanceID.value = 0
     return
   }
-  if (!props.allowedInstanceIds.includes(instanceID.value)) {
-    instanceID.value = props.allowedInstanceIds[0] ?? 0
+  if (visibleInstances.value.length === 1) {
+    instanceID.value = visibleInstances.value[0]?.id ?? 0
+    return
+  }
+  if (!visibleInstances.value.some(instance => instance.id === instanceID.value)) {
+    instanceID.value = 0
   }
 }
 
 function selectItem(item: Item) {
   emit('update:modelValue', item.name)
   emit('select', item)
+}
+
+function selectInstance(id: number) {
+  if (instanceID.value === id) return
+  instanceID.value = id
+  emit('update:modelValue', '')
+  items.value = []
 }
 
 function iconUrl(item: Item) {
@@ -92,7 +113,7 @@ function onIconError(e: globalThis.Event) {
   <div class="item-picker">
     <UFormField
       label="Item Name"
-      required
+      :required="required"
     >
       <UInput
         :model-value="modelValue"
@@ -113,7 +134,7 @@ function onIconError(e: globalThis.Event) {
         type="button"
         class="session-instance-choice"
         :class="{ 'is-selected': instanceID === instance.id }"
-        @click="instanceID = instance.id"
+        @click="selectInstance(instance.id)"
       >
         <span>{{ instance.name }}</span>
         <small>{{ instance.expansion }}</small>
@@ -121,7 +142,13 @@ function onIconError(e: globalThis.Event) {
     </div>
 
     <div
-      v-if="loading"
+      v-if="!canSearchItems"
+      class="py-4 text-center opacity-70"
+    >
+      Choose an instance to show items.
+    </div>
+    <div
+      v-else-if="loading"
       class="py-6 text-center opacity-70"
     >
       Searching…

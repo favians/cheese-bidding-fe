@@ -1340,3 +1340,17 @@
   color: #17110a !important;
   opacity: 1 !important;
 }
+
+/* Instance eyebrow above the boss name in each board section (V1 parity). */
+.session-boss-titles {
+  display: grid;
+  gap: 1px;
+}
+
+.session-boss-instance {
+  color: var(--cb-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

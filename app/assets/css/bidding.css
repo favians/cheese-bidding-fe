@@ -305,7 +305,7 @@
 
 .bid-controls {
   display: grid;
-  grid-template-columns: 70px minmax(95px, 1fr) 72px;
+  grid-template-columns: auto minmax(95px, 1fr) 72px;
   gap: 12px;
   align-items: end;
 }
@@ -328,22 +328,65 @@
 }
 
 .min-button {
-  min-width: 0;
+  white-space: nowrap;
 }
 
 .bid-input {
   display: grid;
-  gap: 3px;
-  color: #f3dca5;
-  font-size: 0.76rem;
-  font-weight: 900;
+  gap: 4px;
 }
 
-.bid-input input {
-  min-height: 34px;
-  color: #f7f0d7;
-  font-weight: 900;
+.bid-input > span {
+  color: var(--cb-theme);
+  font-size: 0.66rem;
+  font-weight: 1000;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(var(--cb-theme-rgb), 0.35);
+}
+
+/* Gaming-styled bid fields — glowing themed inset, bright readable value.
+   Overrides Nuxt UI's default input surface (which hid the typed number). */
+.bid-input input,
+.prebid-catalog-action input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.45) !important;
+  border-radius: 9px !important;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(var(--cb-theme-rgb), 0.07)) !important;
+  box-shadow:
+    inset 0 2px 7px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03) !important;
+  color: #fff7ed !important;
+  font-size: 1.02rem !important;
+  font-weight: 1000 !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
   text-align: right;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.85), 0 0 12px rgba(var(--cb-theme-rgb), 0.25);
+  transition: border-color 160ms ease, box-shadow 220ms ease, background 220ms ease;
+}
+
+.bid-input input::placeholder,
+.prebid-catalog-action input::placeholder {
+  color: rgba(255, 247, 237, 0.38) !important;
+  font-weight: 800;
+  text-shadow: none;
+}
+
+.bid-input input:focus,
+.prebid-catalog-action input:focus,
+.bid-input input:focus-visible,
+.prebid-catalog-action input:focus-visible {
+  border-color: rgb(var(--cb-theme-rgb)) !important;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(var(--cb-theme-rgb), 0.14)) !important;
+  box-shadow:
+    inset 0 2px 7px rgba(0, 0, 0, 0.45),
+    0 0 0 3px rgba(var(--cb-theme-rgb), 0.25),
+    0 0 20px rgba(var(--cb-theme-rgb), 0.22) !important;
+  outline: none !important;
 }
 
 .player-result-list {
@@ -442,11 +485,287 @@
   text-transform: uppercase;
 }
 
-/* Outbid → the player was leading and got overtaken: turn the row red. */
+/* Outbid → the player was leading and got overtaken: turn the row red,
+   as strong as the winning-green state. */
 .auction-card.outbid {
-  border-color: rgba(239, 68, 68, 0.6);
+  border-color: rgba(239, 68, 68, 0.32);
   background:
-    linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.05)),
-    rgba(239, 68, 68, 0.04);
-  box-shadow: inset 3px 0 0 #ef4444;
+    linear-gradient(135deg, rgba(239, 68, 68, 0.26), rgba(153, 27, 27, 0.4)),
+    linear-gradient(90deg, rgba(69, 10, 10, 0.86), rgba(87, 13, 13, 0.72));
+  box-shadow:
+    inset 0 1px 0 rgba(254, 226, 226, 0.14),
+    0 12px 30px rgba(153, 27, 27, 0.24);
+}
+
+/* Boss sections on the player board (a group per boss, V1 parity). */
+.player-boss-groups {
+  display: grid;
+  gap: 16px;
+}
+
+.player-boss-group {
+  display: grid;
+  gap: 8px;
+}
+
+.player-boss-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(var(--cb-theme-rgb), 0.28);
+}
+
+.player-boss-head h4 {
+  margin: 0;
+  color: var(--cb-theme);
+  font-family: var(--cb-font-wow);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.player-boss-head span {
+  color: var(--cb-muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+/* Instance eyebrow above the boss name in each player board section. */
+.player-boss-titles {
+  display: grid;
+  gap: 1px;
+}
+
+.player-boss-instance {
+  color: var(--cb-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Player topbar action buttons (Results + Leave) grouped on the right. */
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Prebid catalog — V1 design: instance picker + a grid of compact item cards. */
+.prebid-catalog {
+  display: grid;
+  gap: 16px;
+  padding: 12px;
+}
+
+.prebid-instance-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prebid-filter-badge {
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.3);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 247, 237, 0.72);
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.prebid-filter-badge:hover,
+.prebid-filter-badge:focus-visible {
+  border-color: rgba(var(--cb-theme-rgb), 0.5);
+  background: rgba(var(--cb-theme-rgb), 0.1);
+  outline: none;
+}
+
+.prebid-filter-badge.active {
+  border-color: rgb(var(--cb-theme-rgb));
+  background: rgba(var(--cb-theme-rgb), 0.2);
+  color: #fff7ed;
+}
+
+.prebid-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .prebid-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .prebid-catalog-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.prebid-catalog-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(var(--cb-theme-rgb), 0.1), rgba(255, 255, 255, 0.03)),
+    rgba(20, 16, 18, 0.86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 22px rgba(0, 0, 0, 0.22);
+  padding: 10px;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+.prebid-catalog-card.has-prebid {
+  border-color: rgba(var(--cb-theme-rgb), 0.4);
+}
+
+.prebid-catalog-card.winning {
+  border-color: rgba(34, 197, 94, 0.5);
+  background:
+    linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(21, 128, 61, 0.28)),
+    rgba(6, 78, 59, 0.6);
+}
+
+.prebid-catalog-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.5);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(var(--cb-theme-hot-rgb), 0.4), transparent 30%),
+    linear-gradient(135deg, rgba(var(--cb-theme-rgb), 0.5), #130808 55%);
+  color: #ffe6a3;
+  font-weight: 1000;
+  overflow: hidden;
+}
+
+.prebid-catalog-icon img {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.prebid-catalog-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.prebid-catalog-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: rgb(var(--cb-theme-hot-rgb));
+  font-size: 0.9rem;
+  font-weight: 1000;
+  line-height: 1.15;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9);
+}
+
+.prebid-catalog-name .item-name-main {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prebid-catalog-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.prebid-open-badge {
+  border: 1px solid rgba(var(--cb-theme-rgb), 0.4);
+  border-radius: 999px;
+  background: rgba(var(--cb-theme-rgb), 0.16);
+  color: var(--cb-theme);
+  font-size: 0.72rem;
+  font-weight: 1000;
+  padding: 2px 8px;
+}
+
+.prebid-catalog-by {
+  color: rgba(255, 247, 237, 0.62);
+  font-size: 0.74rem;
+}
+
+.prebid-catalog-none {
+  color: rgba(255, 247, 237, 0.5);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.prebid-catalog-action {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+/* WoW item rarity colors (TBC palette) — applied to item names in bid + prebid. */
+.quality-poor { --quality-color: #9d9d9d; --quality-rgb: 157, 157, 157; }
+.quality-common { --quality-color: #ffffff; --quality-rgb: 255, 255, 255; }
+.quality-uncommon { --quality-color: #1eff00; --quality-rgb: 30, 255, 0; }
+.quality-rare { --quality-color: #0070dd; --quality-rgb: 0, 112, 221; }
+.quality-epic { --quality-color: #d58cff; --quality-rgb: 213, 140, 255; }
+.quality-legendary { --quality-color: #ff8000; --quality-rgb: 255, 128, 0; }
+.quality-artifact { --quality-color: #e6cc80; --quality-rgb: 230, 204, 128; }
+.quality-heirloom { --quality-color: #00ccff; --quality-rgb: 0, 204, 255; }
+
+.quality-item-name {
+  color: var(--quality-color, #d58cff) !important;
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.92),
+    0 0 12px rgba(var(--quality-rgb, 213, 140, 255), 0.28);
+}
+
+.wowhead-item-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.wowhead-item-link:hover,
+.wowhead-item-link:focus-visible {
+  color: #fff7d6;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Instance → boss hierarchy on the bid board: one instance header, bosses under. */
+.player-instance-group {
+  display: grid;
+  gap: 12px;
+}
+
+.player-instance-head {
+  margin: 0;
+  border-bottom: 1px solid rgba(var(--cb-theme-rgb), 0.35);
+  padding-bottom: 6px;
+  color: #fff7ed;
+  font-family: var(--cb-font-wow);
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 0 18px rgba(var(--cb-theme-rgb), 0.3);
 }

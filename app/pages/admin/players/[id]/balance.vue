@@ -6,6 +6,7 @@ import type {
   CreateIncomingRequest,
   IncomingBalance,
   IncomingStatus,
+  Item,
   LedgerEntry,
   Pagination
 } from '#shared/types/api'
@@ -32,12 +33,18 @@ const pendingIncomingAction = ref<{ row: IncomingBalance, action: 'confirm' | 'c
 const adjustmentForm = reactive<BalanceAdjustmentRequest>({
   amount: '',
   reason: '',
-  password: ''
+  password: '',
+  item_name: '',
+  item_id: 0,
+  item_quality: '',
+  instance: '',
+  boss: '',
+  image: '',
+  session_snapshot: ''
 })
 const incomingForm = reactive<CreateIncomingRequest>({
   client_id: 0,
   amount: 0,
-  week_id: '',
   note: '',
   password: ''
 })
@@ -47,6 +54,12 @@ const pendingIncoming = computed(() => {
     .filter(row => row.status === 'pending')
     .reduce((sum, row) => sum + Number(row.amount || 0), 0)
   return Number.isFinite(total) ? total : 0
+})
+const adjustmentItemName = computed({
+  get: () => adjustmentForm.item_name ?? '',
+  set: (value: string) => {
+    adjustmentForm.item_name = value
+  }
 })
 
 onMounted(() => {
@@ -102,22 +115,54 @@ async function submitAdjustment() {
   const reason = adjustmentForm.reason.trim()
   const password = adjustmentForm.password.trim()
   if (!amount || !reason || !password || Number(amount) === 0) return
+  const itemName = adjustmentForm.item_name?.trim() ?? ''
   savingAdjustment.value = true
   error.value = ''
   try {
     balance.value = await request<Balance>(`/api/v1/internal/clients/${clientId.value}/balance-adjustments`, {
       method: 'POST',
-      body: { amount, reason, password }
+      body: {
+        amount,
+        reason,
+        password,
+        item_id: itemName ? adjustmentForm.item_id : 0,
+        item_name: itemName,
+        item_quality: itemName ? adjustmentForm.item_quality : '',
+        instance: itemName ? adjustmentForm.instance : '',
+        boss: itemName ? adjustmentForm.boss : '',
+        image: itemName ? adjustmentForm.image : '',
+        session_snapshot: adjustmentForm.session_snapshot?.trim()
+      }
     })
     adjustmentForm.amount = ''
     adjustmentForm.reason = ''
     adjustmentForm.password = ''
+    clearAdjustmentItem()
+    adjustmentForm.session_snapshot = ''
     await Promise.all([loadLedger(1), refreshBalance()])
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Could not adjust balance'
   } finally {
     savingAdjustment.value = false
   }
+}
+
+function selectAdjustmentItem(item: Item) {
+  adjustmentForm.item_id = item.wow_item_id
+  adjustmentForm.item_name = item.name
+  adjustmentForm.item_quality = item.quality
+  adjustmentForm.instance = item.instance_name
+  adjustmentForm.boss = item.boss_name
+  adjustmentForm.image = item.icon_path
+}
+
+function clearAdjustmentItem() {
+  adjustmentForm.item_id = 0
+  adjustmentForm.item_name = ''
+  adjustmentForm.item_quality = ''
+  adjustmentForm.instance = ''
+  adjustmentForm.boss = ''
+  adjustmentForm.image = ''
 }
 
 async function submitIncoming() {
@@ -131,13 +176,11 @@ async function submitIncoming() {
       body: {
         client_id: clientId.value,
         amount: incomingForm.amount,
-        week_id: incomingForm.week_id?.trim(),
         note: incomingForm.note?.trim(),
         password
       }
     })
     incomingForm.amount = 0
-    incomingForm.week_id = ''
     incomingForm.note = ''
     incomingForm.password = ''
     await loadIncoming(1)
@@ -186,6 +229,18 @@ function ledgerSourceLabel(entry: LedgerEntry) {
   if (entry.source === 'withdrawal_refund') return 'Withdrawal refund'
   if (entry.source === 'admin_adjustment') return 'Admin adjustment'
   return entry.source
+}
+
+function itemQualityClass(quality?: string) {
+  const normalized = String(quality || '').trim().toLowerCase()
+  if (!normalized) return ''
+  return `quality-item-name quality-item-name--${normalized}`
+}
+
+function ledgerItemMeta(entry: LedgerEntry) {
+  return [entry.item_instance_name, entry.item_boss_name]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 function incomingStatusColor(status: IncomingStatus): 'warning' | 'success' | 'neutral' {
@@ -254,7 +309,6 @@ function formatDate(value?: string | null) {
       <section class="admin-balance-page-section">
         <div class="admin-balance-page-head">
           <h2>Adjustment Form</h2>
-          <span>{{ ledgerPagination?.data_total ?? ledger.length }} history entries</span>
         </div>
         <form
           class="admin-balance-page-form"
@@ -281,6 +335,16 @@ function formatDate(value?: string | null) {
             />
           </UFormField>
           <UFormField
+            label="Session"
+            class="admin-balance-page-field admin-balance-page-field--session"
+          >
+            <UInput
+              v-model="adjustmentForm.session_snapshot"
+              placeholder="Session snapshot"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
             label="Password"
             class="admin-balance-page-field"
           >
@@ -292,6 +356,23 @@ function formatDate(value?: string | null) {
               class="w-full"
             />
           </UFormField>
+          <div class="admin-balance-page-item-picker">
+            <ItemPicker
+              v-model="adjustmentItemName"
+              :required="false"
+              @select="selectAdjustmentItem"
+            />
+            <UButton
+              v-if="adjustmentForm.item_name"
+              type="button"
+              label="Clear item"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              class="admin-balance-page-clear-item"
+              @click="clearAdjustmentItem"
+            />
+          </div>
           <UButton
             type="submit"
             label="Adjust"
@@ -321,16 +402,6 @@ function formatDate(value?: string | null) {
               type="number"
               min="0"
               step="0.01"
-              class="w-full"
-            />
-          </UFormField>
-          <UFormField
-            label="Week"
-            class="admin-balance-page-field"
-          >
-            <UInput
-              v-model="incomingForm.week_id"
-              placeholder="optional"
               class="w-full"
             />
           </UFormField>
@@ -395,7 +466,7 @@ function formatDate(value?: string | null) {
             >
               {{ row.status }}
             </UBadge>
-            <span>{{ row.note || row.week_id || '—' }}</span>
+            <span>{{ row.note || '—' }}</span>
             <time>{{ formatDate(row.created_at) }}</time>
             <span class="admin-data-table-actions">
               <UTooltip text="Confirm incoming">
@@ -435,7 +506,6 @@ function formatDate(value?: string | null) {
       <section class="admin-balance-page-section">
         <div class="admin-balance-page-head">
           <h2>Balance History</h2>
-          <span>{{ ledgerPagination?.data_total ?? ledger.length }} entries</span>
         </div>
         <div
           v-if="!ledger.length"
@@ -450,6 +520,7 @@ function formatDate(value?: string | null) {
           <div class="wallet-table-row wallet-table-head admin-balance-ledger-row">
             <span>Amount</span>
             <span>Type</span>
+            <span>Item</span>
             <span>Session</span>
             <span>Note</span>
             <span>After</span>
@@ -462,6 +533,36 @@ function formatDate(value?: string | null) {
           >
             <strong :class="moneyTone(entry.amount)">{{ formatMoney(entry.amount) }}</strong>
             <span>{{ ledgerSourceLabel(entry) }}</span>
+            <span class="balance-history-item-cell">
+              <template v-if="entry.item_name">
+                <img
+                  v-if="entry.item_icon_url"
+                  :src="entry.item_icon_url"
+                  :alt="`${entry.item_name} icon`"
+                  loading="lazy"
+                >
+                <span
+                  v-else
+                  class="balance-history-item-fallback"
+                >
+                  {{ entry.item_name.charAt(0).toUpperCase() }}
+                </span>
+                <span class="balance-history-item-copy">
+                  <strong :class="itemQualityClass(entry.item_quality)">
+                    {{ entry.item_name }}
+                  </strong>
+                  <small v-if="ledgerItemMeta(entry)">
+                    {{ ledgerItemMeta(entry) }}
+                  </small>
+                </span>
+              </template>
+              <span
+                v-else
+                class="admin-player-muted"
+              >
+                —
+              </span>
+            </span>
             <span>{{ entry.session_snapshot || '—' }}</span>
             <span>{{ entry.note || entry.source || '—' }}</span>
             <strong>{{ formatMoney(entry.balance_after) }}</strong>

@@ -20,7 +20,7 @@ const {
   error
 } = storeToRefs(store)
 
-const form = reactive<CreateIncomingRequest>({ client_id: 0, amount: 0, week_id: '', note: '', password: '' })
+const form = reactive<CreateIncomingRequest>({ client_id: 0, amount: 0, note: '', password: '' })
 const rateDraft = ref('0')
 const incomingStatusFilter = ref<'all' | IncomingStatus>('all')
 const withdrawalStatusFilter = ref<'all' | WithdrawalStatus>('all')
@@ -44,7 +44,6 @@ const ledgerTypeItems = ['all', 'credit', 'debit']
 const ledgerSourceItems = ['all', 'incoming_balance', 'withdrawal', 'withdrawal_refund', 'auction_win', 'auction_refund', 'admin_adjustment', 'cheesepayout_item']
 const externalIncomingPayload = `{
   "discordId": "123456789012345678",
-  "weekId": "2026-W26",
   "amount": 25000,
   "note": "CheesePayout week payout"
 }`
@@ -71,7 +70,7 @@ const ledgerColumns = [
 const incomingColumns = [
   { key: 'client_id', label: 'Client' },
   { key: 'amount', label: 'Amount' },
-  { key: 'week_id', label: 'Week' },
+  { key: 'note', label: 'Note' },
   { key: 'status', label: 'Status' },
   { key: 'created_at', label: 'Created' },
   { key: 'actions', label: 'Actions' }
@@ -135,7 +134,7 @@ function nextStates(status: WithdrawalStatus): WithdrawalStatus[] {
 
 const filteredIncoming = computed(() => {
   return incoming.value.filter((row) => {
-    return rowMatchesMoneySearch(row.client_id, row.amount, row.week_id, row.note)
+    return rowMatchesMoneySearch(row.client_id, row.amount, row.note)
   })
 })
 
@@ -308,13 +307,6 @@ async function confirmMoneyAction() {
               class="w-full"
             />
           </UFormField>
-          <UFormField label="Week">
-            <UInput
-              v-model="form.week_id"
-              class="w-full"
-              placeholder="e.g. 2026-W26"
-            />
-          </UFormField>
         </div>
         <UFormField label="Note">
           <UInput
@@ -366,7 +358,7 @@ async function confirmMoneyAction() {
           <span>Incoming payout queue</span>
           <code>POST /api/external/incoming-balances</code>
           <code>POST /api/v1/external/incoming-balances</code>
-          <p>Creates pending payout rows. Admin confirmation credits the wallet. Duplicate Discord ID + week ID is safe.</p>
+          <p>Creates pending payout rows. Admin confirmation credits the wallet.</p>
           <pre>{{ externalIncomingPayload }}</pre>
         </div>
 
@@ -523,8 +515,8 @@ async function confirmMoneyAction() {
         <template #cell-amount="{ row }">
           <span class="admin-money-amount">+{{ formatMoney((row as IncomingBalance).amount) }}</span>
         </template>
-        <template #cell-week_id="{ row }">
-          {{ (row as IncomingBalance).week_id || '—' }}
+        <template #cell-note="{ row }">
+          <span class="admin-money-muted">{{ (row as IncomingBalance).note || '—' }}</span>
         </template>
         <template #cell-status="{ row }">
           <UBadge

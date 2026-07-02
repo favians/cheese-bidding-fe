@@ -158,7 +158,6 @@ async function submit() {
         >
           <div class="wallet-table-row wallet-table-head wallet-incoming-row">
             <span>Amount</span>
-            <span>Week</span>
             <span>Status</span>
             <span>Note</span>
             <span>Created</span>
@@ -169,7 +168,6 @@ async function submit() {
             class="wallet-table-row wallet-incoming-row"
           >
             <strong class="wallet-money wallet-money--credit">{{ formatMoney(row.amount) }}</strong>
-            <span>{{ row.week_id || '—' }}</span>
             <span>
               <UBadge
                 :color="incomingStatusColor(row.status)"

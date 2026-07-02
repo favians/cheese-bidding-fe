@@ -120,6 +120,8 @@ export interface Auction {
   item_icon_path: string
   item_icon_url: string
   item_boss_name: string
+  item_instance_name: string
+  item_quality: string
   initial_buyer_name: string
   initial_price: number
   status: AuctionStatus
@@ -145,6 +147,8 @@ export interface Prebid {
   item_icon_path: string
   item_icon_url: string
   item_boss_name: string
+  item_instance_name: string
+  item_quality: string
   status: PrebidStatus
   min_bid: number
   bid_increment: number
@@ -260,6 +264,13 @@ export interface BalanceAdjustmentRequest {
   amount: string
   reason: string
   password: string
+  item_id?: number
+  item_name?: string
+  item_quality?: string
+  instance?: string
+  boss?: string
+  image?: string
+  session_snapshot?: string
 }
 
 export interface LedgerEntry {
@@ -269,6 +280,13 @@ export interface LedgerEntry {
   type: string
   amount: string
   balance_after: string
+  item_name: string
+  item_id: number
+  item_icon_path: string
+  item_icon_url: string
+  item_quality: string
+  item_boss_name: string
+  item_instance_name: string
   note: string
   session_snapshot: string
   created_at: string
@@ -280,7 +298,6 @@ export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'paid'
 export interface IncomingBalance {
   id: string
   client_id: number
-  week_id: string
   amount: string
   status: IncomingStatus
   note: string
@@ -317,7 +334,6 @@ export interface CreateWithdrawalRequest {
 
 export interface CreateIncomingRequest {
   client_id: number
-  week_id?: string
   amount: number
   note?: string
   password?: string

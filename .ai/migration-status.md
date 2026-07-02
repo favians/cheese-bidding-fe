@@ -36,6 +36,12 @@ Remaining work is UI/QA:
 3. mobile/responsive pass
 4. optional product polish: more export formats, print-friendly finished page, import report UI
 
+Deferred cleanup backlog:
+
+- remove low-value table count copy such as `shown on this page` from admin money tables if UI still feels noisy
+- keep incoming payout UI aligned with V1: amount, note, password only; no week field
+- review external CheesePayout help panel wording after BE week-id removal
+
 ## Validation
 
 Use:

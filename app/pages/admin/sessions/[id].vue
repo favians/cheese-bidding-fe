@@ -158,7 +158,11 @@ const boardGroups = computed(() => {
     bucket.push(item)
     groups.set(boss, bucket)
   }
-  return Array.from(groups, ([boss, items]) => ({ boss, items }))
+  return Array.from(groups, ([boss, items]) => ({
+    boss,
+    instance: items[0]?.item_instance_name || '',
+    items
+  }))
 })
 const joinURL = computed(() => {
   if (!import.meta.client || !session.value?.code) return ''
@@ -741,7 +745,13 @@ async function confirmPendingAction() {
             class="session-boss-group"
           >
             <header class="session-boss-head">
-              <h4>{{ group.boss }}</h4>
+              <div class="session-boss-titles">
+                <small
+                  v-if="group.instance"
+                  class="session-boss-instance"
+                >{{ group.instance }}</small>
+                <h4>{{ group.boss }}</h4>
+              </div>
               <span>{{ group.items.length }}</span>
             </header>
             <div class="session-card-list">
@@ -766,10 +776,6 @@ async function confirmPendingAction() {
                   </div>
                   <div class="session-loot-copy">
                     <strong>{{ item.item_name }}</strong>
-                    <span
-                      v-if="item.item_boss_name"
-                      class="session-loot-boss"
-                    >{{ item.item_boss_name }}</span>
                     <span>{{ 'bid_increment' in item ? `Increment ${item.bid_increment}` : '' }}</span>
                   </div>
                 </div>
